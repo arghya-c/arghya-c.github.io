@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arghya Chakraborty - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <ul>
+            <li><a class="active" href="index.html">Home</a></li>
+            <li><a href="research.html">Research</a></li>
+            <!--<li><a href="extra.html">Extra Curricular Activities</a></li>-->
+        </ul>
+    </nav>
+
+    <!-- Header Section -->
+
+    <header class="header" style="background-image: url('images/header.png');">
+        <div class="header-overlay"></div>
+        <h1>Arghya Chakraborty</h1>
+    </header>
+
+    <!-- Home Content --><div class="container two-column">
+
+    <div class="left-column">
+        <p>
+            I am a Research Scholar at the <a href="http://www.tcs.tifr.res.in/">School of Technology and Computer Science</a>, 
+            Tata Institute of Fundamental Research (<a href="https://main.tifr.res.in/">TIFR</a>), Mumbai. My advisor is 
+            Prof. <a href="https://www.tcs.tifr.res.in/~prahladh/">Prahladh Harsha</a>.
+        </p>
+
+        <p>
+            Before joining TIFR, I finished my Bachelor’s degree in Mathematics (BMath) 
+            from the <a href="https://www.isibang.ac.in/">Indian Statistical Institute</a>, Bangalore.
+        </p>
+
+        <p>
+            My research interests include Algorithms and their Complexity, mostly Online Algorithms. 
+            Graph Matchings with fairness and Online Algorithms with Learning are topics that 
+            I am currently working on.
+        </p>
+        <p>
+            My CV can be found <a href="docs/Arghya___CV.pdf" target="_blank">here</a>.
+        </p>
+    </div>
+
+    <div class="right-column">
+        <img id="profile-pic" src="images/profile.jpg" alt="Profile Photo" class="responsive-img">
+
+    </div>
+
+</div>
+
+
+        <footer>
+            © 2025 Arghya Chakraborty
+        </footer>
+    </div>
+
+
+    <script>
+let clickCount = 0;
+let firstClickTime = 0;
+document.getElementById("profile-pic").addEventListener("click", function () {
+    const now = Date.now();
+
+    // First click — start timer
+    if (clickCount === 0) {
+        firstClickTime = now;
+    }
+
+    clickCount++;
+
+    // If more than 2 seconds passed → reset
+    if (now - firstClickTime > 2000) {
+        clickCount = 1;  // this click becomes the new first click
+        firstClickTime = now;
+    }
+
+    // Trigger easter egg on 5 clicks in under 2 seconds
+    if (clickCount >= 5 && (now - firstClickTime <= 2000)) {
+        window.location.href = "extra.html";   // redirect
+    }
+});
+</script>
+</body>
+</html>
