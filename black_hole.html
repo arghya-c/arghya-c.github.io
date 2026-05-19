@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Black Hole Game</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .description {
+        max-width: 900px;
+        margin: 0 auto 20px auto;
+        line-height: 1.6;
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #status {
+        font-size: 22px;
+        margin: 15px;
+        font-weight: bold;
+    }
+
+    svg {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .circle {
+        fill: white;
+        stroke: #444;
+        stroke-width: 2;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .circle:hover {
+        fill: #eaeaea;
+    }
+
+    .red {
+        fill: #ff6666;
+    }
+
+    .blue {
+        fill: #6699ff;
+    }
+
+    .blackhole {
+        fill: black;
+    }
+
+    .label {
+        font-size: 18px;
+        font-weight: bold;
+        pointer-events: none;
+        dominant-baseline: middle;
+        text-anchor: middle;
+    }
+
+    #result {
+        margin-top: 20px;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        background: #333;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #111;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Black Hole</h1>
+
+<div class="description">
+    <p>
+        Players alternate selecting circles from the triangular board.
+    </p>
+
+    <p>
+        Each player numbers their own circles from 1 to 10 in the order they are played.
+        Red moves first.
+    </p>
+
+    <p>
+        After 20 moves, one circle remains empty. That circle becomes the
+        <b>Black Hole</b>.
+    </p>
+
+    <p>
+        Each player's score is the sum of their numbered circles adjacent to the Black Hole.
+        Highest score wins.
+    </p>
+</div>
+
+<div id="status">Red to move (1)</div>
+
+<svg id="board" width="700" height="520"></svg>
+
+<div id="result"></div>
+
+<button onclick="resetGame()">Restart Game</button>
+
+<script>
+const svg = document.getElementById("board");
+
+const rows = 6;
+const radius = 28;
+const spacingX = 75;
+const spacingY = 65;
+
+let cells = [];
+let moveCount = 0;
+
+let redNum = 1;
+let blueNum = 1;
+
+let currentPlayer = "red";
+
+function createBoard() {
+
+    cells = [];
+    svg.innerHTML = "";
+
+    const startX = 350;
+
+    for (let r = 0; r < rows; r++) {
+
+        const cols = r + 1;
+
+        for (let c = 0; c < cols; c++) {
+
+            const x = startX - (r * spacingX / 2) + c * spacingX;
+            const y = 60 + r * spacingY;
+
+            const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", x);
+            circle.setAttribute("cy", y);
+            circle.setAttribute("r", radius);
+            circle.setAttribute("class", "circle");
+
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", x);
+            text.setAttribute("y", y + 1);
+            text.setAttribute("class", "label");
+
+            group.appendChild(circle);
+            group.appendChild(text);
+
+            svg.appendChild(group);
+
+            const cell = {
+                r,
+                c,
+                x,
+                y,
+                owner: null,
+                value: null,
+                circle,
+                text
+            };
+
+            circle.addEventListener("click", () => handleMove(cell));
+
+            cells.push(cell);
+        }
+    }
+}
+
+function handleMove(cell) {
+
+    if (cell.owner !== null) return;
+    if (moveCount >= 20) return;
+
+    let value;
+
+    if (currentPlayer === "red") {
+        value = redNum++;
+        cell.circle.classList.add("red");
+        cell.text.setAttribute("fill", "darkred");
+    } else {
+        value = blueNum++;
+        cell.circle.classList.add("blue");
+        cell.text.setAttribute("fill", "darkblue");
+    }
+
+    cell.owner = currentPlayer;
+    cell.value = value;
+    cell.text.textContent = value;
+
+    moveCount++;
+
+    if (moveCount === 20) {
+        finishGame();
+        return;
+    }
+
+    currentPlayer = currentPlayer === "red" ? "blue" : "red";
+
+    updateStatus();
+}
+
+function updateStatus() {
+
+    if (currentPlayer === "red") {
+        document.getElementById("status").textContent =
+            `Red to move (${redNum})`;
+    } else {
+        document.getElementById("status").textContent =
+            `Blue to move (${blueNum})`;
+    }
+}
+
+function getNeighbors(target) {
+
+    const dirs = [
+        [-1, -1],
+        [-1, 0],
+        [0, -1],
+        [0, 1],
+        [1, 0],
+        [1, 1]
+    ];
+
+    const neighbors = [];
+
+    for (const [dr, dc] of dirs) {
+
+        const nr = target.r + dr;
+        const nc = target.c + dc;
+
+        const found = cells.find(cell =>
+            cell.r === nr && cell.c === nc
+        );
+
+        if (found) neighbors.push(found);
+    }
+
+    return neighbors;
+}
+
+function finishGame() {
+
+    const blackHole = cells.find(c => c.owner === null);
+
+    blackHole.circle.classList.add("blackhole");
+
+    const neighbors = getNeighbors(blackHole);
+
+    let redScore = 0;
+    let blueScore = 0;
+
+    neighbors.forEach(n => {
+
+        if (n.owner === "red") {
+            redScore += n.value;
+        }
+
+        if (n.owner === "blue") {
+            blueScore += n.value;
+        }
+    });
+
+    let winner;
+
+    if (redScore > blueScore) {
+        winner = "Red wins!";
+    } else if (blueScore > redScore) {
+        winner = "Blue wins!";
+    } else {
+        winner = "It's a draw!";
+    }
+
+    document.getElementById("status").textContent =
+        "Game Over";
+
+    document.getElementById("result").innerHTML =
+        `
+        Black Hole formed.<br><br>
+        Red Score: ${redScore}<br>
+        Blue Score: ${blueScore}<br><br>
+        <b>${winner}</b>
+        `;
+}
+
+function resetGame() {
+
+    moveCount = 0;
+    redNum = 1;
+    blueNum = 1;
+    currentPlayer = "red";
+
+    document.getElementById("result").innerHTML = "";
+
+    updateStatus();
+
+    createBoard();
+}
+
+createBoard();
+</script>
+
+</body>
+</html>

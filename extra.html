@@ -45,6 +45,23 @@
             © 2025 Arghya Chakraborty
         </footer>
     </div>
+<script>
+    let secretCode = "";
+    const target = "games";
 
+    document.addEventListener("keydown", function(event) {
+
+        secretCode += event.key.toLowerCase();
+
+        // Keep only last few characters
+        if (secretCode.length > target.length) {
+            secretCode = secretCode.slice(-target.length);
+        }
+
+        if (secretCode === target) {
+            window.location.href = "games.html";
+        }
+    });
+</script>
 </body>
 </html>
