@@ -40,25 +40,37 @@
             Anything intellectual seems to interest me, so feel free to contact me anytime.
         </p>
 
-        <div style="text-align: center; margin-top: 40px;">
+<div style="text-align: center; margin-top: 45px;">
 
-    <a href="games.html">
+    <a href="games.html" style="text-decoration: none;">
+
         <button style="
-            padding: 12px 28px;
-            font-size: 18px;
+            padding: 14px 34px;
+            font-size: 20px;
+            font-weight: bold;
             border: none;
-            border-radius: 10px;
-            background: #333;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #4a90e2, #6a5acd);
             color: white;
             cursor: pointer;
-            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+            transition: all 0.25s ease;
         "
-        onmouseover="this.style.background='#111'"
-        onmouseout="this.style.background='#333'">
 
-            Some Simple Games
+        onmouseover="
+            this.style.transform='translateY(-3px) scale(1.03)';
+            this.style.boxShadow='0 8px 22px rgba(74,144,226,0.55)';
+        "
+
+        onmouseout="
+            this.style.transform='translateY(0px) scale(1)';
+            this.style.boxShadow='0 4px 15px rgba(74,144,226,0.4)';
+        ">
+
+            🎮 Play Some Games
 
         </button>
+
     </a>
 
 </div>
