@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knight Duel</title>
+
+<style>
+
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .description {
+        max-width: 900px;
+        margin: 0 auto 20px auto;
+        line-height: 1.6;
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #status {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 20px;
+    }
+
+    #board {
+        width: 640px;
+        height: 640px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        border: 4px solid #333;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .square {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 46px;
+        user-select: none;
+        position: relative;
+    }
+
+    .white {
+        background: #f0d9b5;
+    }
+
+    .gray {
+        background: #b58863;
+    }
+
+    .burned {
+        background: #222 !important;
+        color: white;
+        font-size: 34px;
+    }
+
+    .highlight {
+        outline: 5px solid gold;
+        outline-offset: -5px;
+        cursor: pointer;
+    }
+
+    .redKnight {
+        color: darkred;
+    }
+
+    .blueKnight {
+        color: darkblue;
+    }
+
+    #result {
+        margin-top: 25px;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    button {
+        margin-top: 25px;
+        padding: 10px 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        background: #333;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #111;
+    }
+
+</style>
+</head>
+
+<body>
+
+<h1>Knight Duel</h1>
+
+<div class="description">
+
+    <p>
+        Two knights duel on a collapsing chessboard.
+    </p>
+
+    <p>
+        Every time a knight moves, the square it leaves behind
+        is permanently burned.
+    </p>
+
+    <p>
+        Landing on a burned square loses immediately.
+    </p>
+
+    <p>
+        Landing on the opponent knight wins immediately.
+    </p>
+
+</div>
+
+<div id="status"></div>
+
+<div id="board"></div>
+
+<div id="result"></div>
+
+<button onclick="resetGame()">New Game</button>
+
+<script>
+
+const board = document.getElementById("board");
+
+const knightMoves = [
+    [2,1],[2,-1],[-2,1],[-2,-1],
+    [1,2],[1,-2],[-1,2],[-1,-2]
+];
+
+let squares = [];
+
+let currentPlayer = "red";
+
+let gameOver = false;
+
+let redPos;
+let bluePos;
+
+function coordToIndex(r, c) {
+    return r * 8 + c;
+}
+
+function valid(r, c) {
+    return r >= 0 && r < 8 && c >= 0 && c < 8;
+}
+
+function createBoard() {
+
+    board.innerHTML = "";
+
+    squares = [];
+
+    for (let r = 0; r < 8; r++) {
+
+        for (let c = 0; c < 8; c++) {
+
+            const div = document.createElement("div");
+
+            div.classList.add("square");
+
+            if ((r + c) % 2 === 0) {
+                div.classList.add("white");
+            } else {
+                div.classList.add("gray");
+            }
+
+            board.appendChild(div);
+
+            squares.push({
+                r,
+                c,
+                burned: false,
+                div
+            });
+        }
+    }
+}
+
+function placeKnights() {
+
+    redPos = {r: 7, c: 0}; // a1
+    bluePos = {r: 0, c: 7}; // h8
+
+    render();
+}
+
+function render() {
+
+    for (const sq of squares) {
+
+        sq.div.innerHTML = "";
+
+        sq.div.classList.remove("highlight");
+
+        if (sq.burned) {
+            sq.div.classList.add("burned");
+            sq.div.innerHTML = "✕";
+        }
+    }
+
+    const redSquare =
+        squares[coordToIndex(redPos.r, redPos.c)];
+
+    redSquare.div.innerHTML =
+        '<span class="redKnight">♞</span>';
+
+    const blueSquare =
+        squares[coordToIndex(bluePos.r, bluePos.c)];
+
+    blueSquare.div.innerHTML =
+        '<span class="blueKnight">♞</span>';
+
+    if (!gameOver) {
+        highlightMoves();
+    }
+}
+
+function highlightMoves() {
+
+    const pos =
+        currentPlayer === "red"
+        ? redPos
+        : bluePos;
+
+    for (const [dr, dc] of knightMoves) {
+
+        const nr = pos.r + dr;
+        const nc = pos.c + dc;
+
+        if (!valid(nr, nc)) continue;
+
+        const sq =
+            squares[coordToIndex(nr, nc)];
+
+        sq.div.classList.add("highlight");
+
+        sq.div.onclick = () =>
+            moveKnight(nr, nc);
+    }
+}
+
+function moveKnight(nr, nc) {
+
+    if (gameOver) return;
+
+    const movingPos =
+        currentPlayer === "red"
+        ? redPos
+        : bluePos;
+
+    const opponentPos =
+        currentPlayer === "red"
+        ? bluePos
+        : redPos;
+
+    const destination =
+        squares[coordToIndex(nr, nc)];
+
+    // Capture opponent
+    if (
+        nr === opponentPos.r &&
+        nc === opponentPos.c
+    ) {
+
+        gameOver = true;
+
+        movingPos.r = nr;
+        movingPos.c = nc;
+
+        render();
+
+        document.getElementById("status").textContent =
+            "Game Over";
+
+        document.getElementById("result").innerHTML =
+            `<b>${
+                currentPlayer === "red"
+                ? "Red"
+                : "Blue"
+            } wins by capture!</b>`;
+
+        return;
+    }
+
+    // Burn old square
+    const oldSquare =
+        squares[
+            coordToIndex(
+                movingPos.r,
+                movingPos.c
+            )
+        ];
+
+    oldSquare.burned = true;
+
+    // Move
+    movingPos.r = nr;
+    movingPos.c = nc;
+
+    // Lose by landing on X
+    if (destination.burned) {
+
+        gameOver = true;
+
+        render();
+
+        document.getElementById("status").textContent =
+            "Game Over";
+
+        document.getElementById("result").innerHTML =
+            `<b>${
+                currentPlayer === "red"
+                ? "Blue"
+                : "Red"
+            } wins!</b><br>
+            ${
+                currentPlayer === "red"
+                ? "Red"
+                : "Blue"
+            } landed on a burned square.`;
+
+        return;
+    }
+
+    currentPlayer =
+        currentPlayer === "red"
+        ? "blue"
+        : "red";
+
+    render();
+
+    updateStatus();
+
+    checkNoMoves();
+}
+
+function checkNoMoves() {
+
+    const pos =
+        currentPlayer === "red"
+        ? redPos
+        : bluePos;
+
+    let hasMove = false;
+
+    for (const [dr, dc] of knightMoves) {
+
+        const nr = pos.r + dr;
+        const nc = pos.c + dc;
+
+        if (!valid(nr, nc)) continue;
+
+        hasMove = true;
+    }
+
+    if (!hasMove) {
+
+        gameOver = true;
+
+        document.getElementById("status").textContent =
+            "Game Over";
+
+        document.getElementById("result").innerHTML =
+            `<b>${
+                currentPlayer === "red"
+                ? "Blue"
+                : "Red"
+            } wins!</b><br>
+            ${
+                currentPlayer === "red"
+                ? "Red"
+                : "Blue"
+            } has no legal moves.`;
+    }
+}
+
+function updateStatus() {
+
+    document.getElementById("status").textContent =
+        `${
+            currentPlayer === "red"
+            ? "Red"
+            : "Blue"
+        } to move`;
+}
+
+function resetGame() {
+
+    gameOver = false;
+
+    currentPlayer = "red";
+
+    document.getElementById("result").innerHTML = "";
+
+    createBoard();
+
+    placeKnights();
+
+    updateStatus();
+}
+
+resetGame();
+
+</script>
+
+</body>
+</html>
