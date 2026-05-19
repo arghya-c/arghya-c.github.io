@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lights Out</title>
+
+<style>
+
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .description {
+        max-width: 900px;
+        margin: 0 auto 20px auto;
+        line-height: 1.6;
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #controls {
+        margin: 20px;
+    }
+
+    button {
+        margin: 8px;
+        padding: 10px 22px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        background: #333;
+        color: white;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    button:hover {
+        background: #111;
+    }
+
+    #status {
+        margin-top: 15px;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    #board {
+        width: fit-content;
+        margin: 25px auto;
+        display: grid;
+        gap: 6px;
+        background: #222;
+        padding: 10px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .cell {
+        width: 70px;
+        height: 70px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.15s;
+    }
+
+    .off {
+        background: #222;
+    }
+
+    .on {
+        background: #ffd54f;
+        box-shadow:
+            0 0 10px #ffd54f,
+            0 0 20px #ffd54f;
+    }
+
+    .cell:hover {
+        transform: scale(1.04);
+    }
+
+</style>
+</head>
+
+<body>
+
+<h1>Lights Out</h1>
+
+<div class="description">
+
+    <p>
+        Clicking a square toggles that square and its
+        four orthogonal neighbors.
+    </p>
+
+    <p>
+        Turn all the lights off to win.
+    </p>
+
+</div>
+
+<div id="controls">
+
+    <button onclick="newGame()">
+        New Game
+    </button>
+
+    <button onclick="restartGame()">
+        Restart Same Game
+    </button>
+
+</div>
+
+<div id="status"></div>
+
+<div id="board"></div>
+
+<script>
+
+const SIZE = 5;
+
+let board = [];
+
+let initialBoard = [];
+
+function createEmptyBoard() {
+
+    board = [];
+
+    for (let r = 0; r < SIZE; r++) {
+
+        const row = [];
+
+        for (let c = 0; c < SIZE; c++) {
+            row.push(0);
+        }
+
+        board.push(row);
+    }
+}
+
+function copyBoard(src) {
+
+    return src.map(row => [...row]);
+}
+
+function toggle(r, c) {
+
+    const dirs = [
+        [0,0],
+        [1,0],
+        [-1,0],
+        [0,1],
+        [0,-1]
+    ];
+
+    for (const [dr, dc] of dirs) {
+
+        const nr = r + dr;
+        const nc = c + dc;
+
+        if (
+            nr >= 0 &&
+            nr < SIZE &&
+            nc >= 0 &&
+            nc < SIZE
+        ) {
+
+            board[nr][nc] ^= 1;
+        }
+    }
+}
+
+function randomizeSolvableBoard() {
+
+    createEmptyBoard();
+
+    for (let r = 0; r < SIZE; r++) {
+
+        for (let c = 0; c < SIZE; c++) {
+
+            if (Math.random() < 0.5) {
+                toggle(r, c);
+            }
+        }
+    }
+
+    initialBoard = copyBoard(board);
+}
+
+function renderBoard() {
+
+    const boardDiv =
+        document.getElementById("board");
+
+    boardDiv.innerHTML = "";
+
+    boardDiv.style.gridTemplateColumns =
+        `repeat(${SIZE}, 70px)`;
+
+    for (let r = 0; r < SIZE; r++) {
+
+        for (let c = 0; c < SIZE; c++) {
+
+            const cell =
+                document.createElement("div");
+
+            cell.classList.add("cell");
+
+            if (board[r][c] === 1) {
+                cell.classList.add("on");
+            } else {
+                cell.classList.add("off");
+            }
+
+            cell.onclick = () => {
+
+                toggle(r, c);
+
+                renderBoard();
+
+                checkWin();
+            };
+
+            boardDiv.appendChild(cell);
+        }
+    }
+}
+
+function checkWin() {
+
+    for (let r = 0; r < SIZE; r++) {
+
+        for (let c = 0; c < SIZE; c++) {
+
+            if (board[r][c] === 1) {
+
+                document.getElementById("status")
+                    .textContent = "";
+
+                return;
+            }
+        }
+    }
+
+    document.getElementById("status")
+        .textContent = "Solved!";
+}
+
+function newGame() {
+
+    document.getElementById("status")
+        .textContent = "";
+
+    randomizeSolvableBoard();
+
+    renderBoard();
+}
+
+function restartGame() {
+
+    document.getElementById("status")
+        .textContent = "";
+
+    board = copyBoard(initialBoard);
+
+    renderBoard();
+}
+
+newGame();
+
+</script>
+
+</body>
+</html>
