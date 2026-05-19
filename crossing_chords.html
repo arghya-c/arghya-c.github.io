@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Crossing Chords</title>
+
+<style>
+
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+    }
+
+    .description {
+        max-width: 900px;
+        margin: 0 auto 20px auto;
+        line-height: 1.6;
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #controls {
+        margin: 20px;
+        font-size: 18px;
+    }
+
+    select {
+        font-size: 18px;
+        padding: 5px 10px;
+        border-radius: 6px;
+    }
+
+    #status {
+        font-size: 22px;
+        margin: 15px;
+        font-weight: bold;
+    }
+
+    #scoreboard {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    .redText {
+        color: darkred;
+    }
+
+    .blueText {
+        color: darkblue;
+    }
+
+    svg {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-top: 10px;
+    }
+
+    .dot {
+        fill: white;
+        stroke: #444;
+        stroke-width: 2;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .dot:hover {
+        fill: #eaeaea;
+    }
+
+    .selected {
+        fill: gold;
+    }
+
+    .used {
+        fill: #555;
+        cursor: default;
+    }
+
+    .line-red {
+        stroke: #ff7777;
+        stroke-width: 4;
+    }
+
+    .line-blue {
+        stroke: #7799ff;
+        stroke-width: 4;
+    }
+
+    #result {
+        margin-top: 20px;
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        background: #333;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background: #111;
+    }
+
+</style>
+</head>
+
+<body>
+
+<h1>Crossing Chords</h1>
+
+<div class="description">
+
+    <p>
+        Players alternately connect pairs of unused dots on a circle.
+    </p>
+
+    <p>
+        Each dot can only be used once.
+    </p>
+
+    <p>
+        Scoring:
+    </p>
+
+    <p>
+        +1 point for crossing an opponent line.<br>
+        +2 points for crossing your own line.
+    </p>
+
+    <p>
+        The player with the higher score wins.
+    </p>
+
+</div>
+
+<div id="controls">
+
+    Number of dots:
+
+    <select id="dotCount">
+        <option>8</option>
+        <option>10</option>
+        <option>12</option>
+        <option>14</option>
+        <option selected>16</option>
+        <option>18</option>
+        <option>20</option>
+    </select>
+
+    <button onclick="resetGame()">New Game</button>
+
+</div>
+
+<div id="status"></div>
+
+<div id="scoreboard">
+
+    <span class="redText">
+        Red: <span id="redScore">0</span>
+    </span>
+
+    &nbsp;&nbsp;&nbsp;&nbsp;
+
+    <span class="blueText">
+        Blue: <span id="blueScore">0</span>
+    </span>
+
+</div>
+
+<svg id="board" width="800" height="800"></svg>
+
+<div id="result"></div>
+
+<script>
+
+const svg = document.getElementById("board");
+
+let points = [];
+let lines = [];
+
+let selected = [];
+
+let currentPlayer = "red";
+
+let redScore = 0;
+let blueScore = 0;
+
+function updateStatus() {
+
+    const playerName =
+        currentPlayer === "red"
+        ? "Red"
+        : "Blue";
+
+    document.getElementById("status").textContent =
+        `${playerName} to move`;
+}
+
+function resetGame() {
+
+    svg.innerHTML = "";
+
+    points = [];
+    lines = [];
+    selected = [];
+
+    currentPlayer = "red";
+
+    redScore = 0;
+    blueScore = 0;
+
+    document.getElementById("redScore").textContent = 0;
+    document.getElementById("blueScore").textContent = 0;
+
+    document.getElementById("result").innerHTML = "";
+
+    createBoard();
+
+    updateStatus();
+}
+
+function createBoard() {
+
+    const n = parseInt(
+        document.getElementById("dotCount").value
+    );
+
+    const cx = 400;
+    const cy = 400;
+    const radius = 300;
+
+    for (let i = 0; i < n; i++) {
+
+        const angle =
+            (2 * Math.PI * i / n) - Math.PI / 2;
+
+        const x = cx + radius * Math.cos(angle);
+        const y = cy + radius * Math.sin(angle);
+
+        const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle"
+        );
+
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", 12);
+
+        circle.setAttribute("class", "dot");
+
+        svg.appendChild(circle);
+
+        const point = {
+            index: i,
+            x,
+            y,
+            used: false,
+            circle
+        };
+
+        circle.addEventListener("click", () =>
+            selectPoint(point)
+        );
+
+        points.push(point);
+    }
+}
+
+function selectPoint(point) {
+
+    if (point.used) return;
+
+    if (selected.includes(point)) return;
+
+    selected.push(point);
+
+    point.circle.classList.add("selected");
+
+    if (selected.length === 2) {
+
+        drawLine(selected[0], selected[1]);
+
+        selected.forEach(p =>
+            p.circle.classList.remove("selected")
+        );
+
+        selected = [];
+    }
+}
+
+function drawLine(p1, p2) {
+
+    const line = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "line"
+    );
+
+    line.setAttribute("x1", p1.x);
+    line.setAttribute("y1", p1.y);
+
+    line.setAttribute("x2", p2.x);
+    line.setAttribute("y2", p2.y);
+
+    line.setAttribute(
+        "class",
+        currentPlayer === "red"
+        ? "line-red"
+        : "line-blue"
+    );
+
+    svg.insertBefore(line, svg.firstChild);
+
+    let gained = 0;
+
+    for (const oldLine of lines) {
+
+        if (
+            intersects(
+                p1.index,
+                p2.index,
+                oldLine.a,
+                oldLine.b
+            )
+        ) {
+
+            if (oldLine.player === currentPlayer) {
+                gained += 2;
+            } else {
+                gained += 1;
+            }
+        }
+    }
+
+    if (currentPlayer === "red") {
+        redScore += gained;
+    } else {
+        blueScore += gained;
+    }
+
+    document.getElementById("redScore").textContent =
+        redScore;
+
+    document.getElementById("blueScore").textContent =
+        blueScore;
+
+    lines.push({
+        a: p1.index,
+        b: p2.index,
+        player: currentPlayer
+    });
+
+    p1.used = true;
+    p2.used = true;
+
+    p1.circle.classList.add("used");
+    p2.circle.classList.add("used");
+
+    const remaining =
+        points.filter(p => !p.used).length;
+
+    if (remaining === 0) {
+
+        finishGame();
+
+        return;
+    }
+
+    currentPlayer =
+        currentPlayer === "red"
+        ? "blue"
+        : "red";
+
+    updateStatus();
+}
+
+function intersects(a, b, c, d) {
+
+    if (a > b) [a, b] = [b, a];
+    if (c > d) [c, d] = [d, c];
+
+    return (
+        (a < c && c < b && b < d) ||
+        (c < a && a < d && d < b)
+    );
+}
+
+function finishGame() {
+
+    let winner;
+
+    if (redScore > blueScore) {
+        winner = "Red wins!";
+    } else if (blueScore > redScore) {
+        winner = "Blue wins!";
+    } else {
+        winner = "It's a draw!";
+    }
+
+    document.getElementById("status").textContent =
+        "Game Over";
+
+    document.getElementById("result").innerHTML =
+        `
+        Final Score<br><br>
+
+        Red: ${redScore}<br>
+        Blue: ${blueScore}<br><br>
+
+        <b>${winner}</b>
+        `;
+}
+
+resetGame();
+
+</script>
+
+</body>
+</html>
