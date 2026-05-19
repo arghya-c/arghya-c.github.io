@@ -7,107 +7,115 @@
 
 <style>
 
-    body {
-        font-family: Arial, sans-serif;
-        background: #f4f4f4;
-        text-align: center;
-        margin: 0;
-        padding: 20px;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+}
 
-    h1 {
-        margin-bottom: 10px;
-    }
+h1 {
+    margin-bottom: 10px;
+}
 
-    .description {
-        max-width: 900px;
-        margin: 0 auto 20px auto;
-        line-height: 1.6;
-        background: white;
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
+.description {
+    max-width: 900px;
+    margin: 0 auto 20px auto;
+    line-height: 1.6;
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
 
-    #controls {
-        margin: 20px;
-    }
+#controls {
+    margin: 20px;
+}
 
-    button {
-        margin: 8px;
-        padding: 10px 22px;
-        font-size: 18px;
-        border: none;
-        border-radius: 8px;
-        background: #333;
-        color: white;
-        cursor: pointer;
-        transition: 0.2s;
-    }
+button {
+    margin: 8px;
+    padding: 10px 22px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    background: #333;
+    color: white;
+    cursor: pointer;
+    transition: 0.2s;
+}
 
-    button:hover {
-        background: #111;
-    }
+button:hover {
+    background: #111;
+}
 
-    #status {
-        margin-top: 15px;
-        font-size: 22px;
-        font-weight: bold;
-    }
+#status {
+    margin-top: 15px;
+    font-size: 22px;
+    font-weight: bold;
+}
 
-    #remaining {
-        margin-top: 10px;
-        font-size: 20px;
-        font-weight: bold;
-    }
+#remaining {
+    margin-top: 10px;
+    font-size: 20px;
+    font-weight: bold;
+}
 
-    #board {
-        width: fit-content;
-        margin: 30px auto;
-        display: grid;
-        grid-template-columns: repeat(7, 70px);
-        gap: 6px;
-        background: white;
-        padding: 20px;
-        border-radius: 14px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
+#board {
+    width: fit-content;
+    margin: 30px auto;
+    display: grid;
+    grid-template-columns: repeat(7, 70px);
+    gap: 6px;
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
 
-    .cell {
-        width: 70px;
-        height: 70px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        user-select: none;
-        font-size: 42px;
-    }
+.cell {
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    font-size: 42px;
+}
 
-    .empty {
-        background: #d7d7d7;
-        cursor: pointer;
-        transition: 0.15s;
-    }
+.invalid {
+    visibility: hidden;
+}
 
-    .empty:hover {
-        background: #c5e1a5;
-    }
+.peg {
+    background: #90caf9;
+    cursor: pointer;
+    transition: 0.15s;
+}
 
-    .peg {
-        background: #90caf9;
-        cursor: pointer;
-        transition: 0.15s;
-    }
+.peg:hover {
+    transform: scale(1.05);
+}
 
-    .peg:hover {
-        transform: scale(1.05);
-    }
+.empty {
+    background: #d7d7d7;
+    cursor: pointer;
+    transition: 0.15s;
+}
 
-    .selected {
-        outline: 5px solid gold;
-        outline-offset: -5px;
-    }
+.empty:hover {
+    background: #c5e1a5;
+}
+
+.selected {
+    outline: 5px solid gold;
+    outline-offset: -5px;
+}
+
+.highlight {
+    background: #a5d6a7;
+}
 
 </style>
 </head>
@@ -143,7 +151,8 @@
 <div id="status"></div>
 
 <div id="remaining">
-    Pegs Remaining: <span id="pegCount"></span>
+    Pegs Remaining:
+    <span id="pegCount"></span>
 </div>
 
 <div id="board"></div>
@@ -162,7 +171,7 @@ const shape = [
     [0,0,1,1,1,0,0],
     [0,0,1,1,1,0,0],
     [1,1,1,1,1,1,1],
-    [1,1,1,0,1,1,1],
+    [1,1,1,1,1,1,1],
     [1,1,1,1,1,1,1],
     [0,0,1,1,1,0,0],
     [0,0,1,1,1,0,0]
@@ -179,17 +188,24 @@ function initializeBoard() {
 
         for (let c = 0; c < 7; c++) {
 
-            if (shape[r][c] === 0) {
+            // Center empty hole
+            if (r === 3 && c === 3) {
+
+                row.push(0);
+
+            }
+
+            // Invalid corners
+            else if (shape[r][c] === 0) {
 
                 row.push(null);
 
-            } else {
+            }
 
-                if (r === 3 && c === 3) {
-                    row.push(0);
-                } else {
-                    row.push(1);
-                }
+            // Peg
+            else {
+
+                row.push(1);
             }
         }
 
@@ -207,24 +223,24 @@ function renderBoard() {
 
         for (let c = 0; c < 7; c++) {
 
+            const value = board[r][c];
+
             const cell =
                 document.createElement("div");
 
             cell.classList.add("cell");
 
-            const value = board[r][c];
-
-            // Invalid corner squares
+            // Invalid cells
             if (value === null) {
 
-                cell.style.visibility = "hidden";
+                cell.classList.add("invalid");
 
                 boardDiv.appendChild(cell);
 
                 continue;
             }
 
-            // Peg
+            // Pegs
             if (value === 1) {
 
                 pegCount++;
@@ -232,10 +248,9 @@ function renderBoard() {
                 cell.classList.add("peg");
 
                 cell.innerHTML = "●";
-
             }
 
-            // Empty hole
+            // Empty holes
             else {
 
                 cell.classList.add("empty");
@@ -251,6 +266,12 @@ function renderBoard() {
                 cell.classList.add("selected");
             }
 
+            // Highlight legal destinations
+            if (isLegalDestination(r, c)) {
+
+                cell.classList.add("highlight");
+            }
+
             cell.onclick = () =>
                 handleClick(r, c);
 
@@ -264,11 +285,45 @@ function renderBoard() {
     checkGameState(pegCount);
 }
 
+function isLegalDestination(r, c) {
+
+    if (!selected) return false;
+
+    if (board[r][c] !== 0) return false;
+
+    const sr = selected.r;
+    const sc = selected.c;
+
+    const dr = r - sr;
+    const dc = c - sc;
+
+    const validMove =
+
+        (
+            Math.abs(dr) === 2 &&
+            dc === 0
+        )
+
+        ||
+
+        (
+            Math.abs(dc) === 2 &&
+            dr === 0
+        );
+
+    if (!validMove) return false;
+
+    const mr = sr + dr / 2;
+    const mc = sc + dc / 2;
+
+    return board[mr][mc] === 1;
+}
+
 function handleClick(r, c) {
 
     const value = board[r][c];
 
-    // Click peg
+    // Select peg
     if (value === 1) {
 
         if (
@@ -289,36 +344,16 @@ function handleClick(r, c) {
         return;
     }
 
-    // Click empty square
+    // Move peg
     if (value === 0 && selected) {
+
+        if (!isLegalDestination(r, c)) return;
 
         const sr = selected.r;
         const sc = selected.c;
 
-        const dr = r - sr;
-        const dc = c - sc;
-
-        const validMove =
-
-            (
-                Math.abs(dr) === 2 &&
-                dc === 0
-            )
-
-            ||
-
-            (
-                Math.abs(dc) === 2 &&
-                dr === 0
-            );
-
-        if (!validMove) return;
-
-        const mr = sr + dr / 2;
-        const mc = sc + dc / 2;
-
-        // Middle must contain peg
-        if (board[mr][mc] !== 1) return;
+        const mr = (sr + r) / 2;
+        const mc = (sc + c) / 2;
 
         // Execute move
         board[sr][sc] = 0;
@@ -361,13 +396,11 @@ function hasMoves() {
                     nc < 0 || nc >= 7
                 ) continue;
 
-                if (
-                    board[nr][nc] === 0 &&
-                    board[mr][mc] === 1
-                ) {
+                if (board[nr][nc] !== 0) continue;
 
-                    return true;
-                }
+                if (board[mr][mc] !== 1) continue;
+
+                return true;
             }
         }
     }
