@@ -289,6 +289,19 @@ function selectPoint(point) {
 
     if (point.used) return;
 
+    // Undo first selection by clicking again
+    if (
+        selected.length === 1 &&
+        selected[0] === point
+    ) {
+
+        point.circle.classList.remove("selected");
+
+        selected = [];
+
+        return;
+    }
+
     if (selected.includes(point)) return;
 
     selected.push(point);
