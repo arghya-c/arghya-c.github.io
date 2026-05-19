@@ -33,6 +33,13 @@
         margin: 20px;
     }
 
+    select {
+        font-size: 18px;
+        padding: 5px 10px;
+        border-radius: 6px;
+        margin-right: 10px;
+    }
+
     button {
         margin: 8px;
         padding: 10px 22px;
@@ -107,16 +114,31 @@
         Turn all the lights off to win.
     </p>
 
+    <p>
+        Every puzzle generated here is guaranteed to be solvable.
+    </p>
+
 </div>
 
 <div id="controls">
+
+    Grid Size:
+
+    <select id="sizeSelect">
+        <option>3</option>
+        <option>4</option>
+        <option selected>5</option>
+        <option>6</option>
+        <option>7</option>
+        <option>8</option>
+    </select>
 
     <button onclick="newGame()">
         New Game
     </button>
 
     <button onclick="restartGame()">
-        Restart Same Game
+        Restart Same Puzzle
     </button>
 
 </div>
@@ -127,7 +149,7 @@
 
 <script>
 
-const SIZE = 5;
+let SIZE = 5;
 
 let board = [];
 
@@ -205,8 +227,14 @@ function renderBoard() {
 
     boardDiv.innerHTML = "";
 
+    const cellSize =
+        SIZE <= 5 ? 70 :
+        SIZE === 6 ? 60 :
+        SIZE === 7 ? 52 :
+        46;
+
     boardDiv.style.gridTemplateColumns =
-        `repeat(${SIZE}, 70px)`;
+        `repeat(${SIZE}, ${cellSize}px)`;
 
     for (let r = 0; r < SIZE; r++) {
 
@@ -216,6 +244,9 @@ function renderBoard() {
                 document.createElement("div");
 
             cell.classList.add("cell");
+
+            cell.style.width = `${cellSize}px`;
+            cell.style.height = `${cellSize}px`;
 
             if (board[r][c] === 1) {
                 cell.classList.add("on");
@@ -258,6 +289,10 @@ function checkWin() {
 }
 
 function newGame() {
+
+    SIZE = parseInt(
+        document.getElementById("sizeSelect").value
+    );
 
     document.getElementById("status")
         .textContent = "";
