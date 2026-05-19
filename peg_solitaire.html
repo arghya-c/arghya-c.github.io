@@ -229,15 +229,9 @@ function renderBoard() {
 
                 cell.innerHTML = "●";
 
-                cell.onclick = () =>
-                    selectPeg(r, c);
-
             } else {
 
                 cell.classList.add("empty");
-
-                cell.onclick = () =>
-                    tryMove(r, c);
             }
 
             if (
@@ -249,9 +243,18 @@ function renderBoard() {
                 cell.classList.add("selected");
             }
 
+            cell.onclick = () =>
+                handleClick(r, c);
+
             boardDiv.appendChild(cell);
         }
     }
+
+    document.getElementById("pegCount")
+        .textContent = pegCount;
+
+    checkGameState(pegCount);
+}
 
     document.getElementById("pegCount")
         .textContent = pegCount;
