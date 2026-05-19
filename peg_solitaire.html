@@ -146,6 +146,10 @@ button:hover {
         New Game
     </button>
 
+    <button onclick="undoMove()">
+        Undo Move
+    </button>
+
 </div>
 
 <div id="status"></div>
@@ -165,6 +169,8 @@ const boardDiv =
 let board = [];
 
 let selected = null;
+
+let history = [];
 
 const shape = [
 
@@ -349,6 +355,19 @@ function handleClick(r, c) {
 
         if (!isLegalDestination(r, c)) return;
 
+        // Save current state
+        history.push({
+
+            board: board.map(
+                row => [...row]
+            ),
+
+            selected:
+                selected
+                ? {...selected}
+                : null
+        });
+
         const sr = selected.r;
         const sc = selected.c;
 
@@ -366,6 +385,24 @@ function handleClick(r, c) {
 
         renderBoard();
     }
+}
+
+function undoMove() {
+
+    if (history.length === 0) return;
+
+    const previous =
+        history.pop();
+
+    board =
+        previous.board.map(
+            row => [...row]
+        );
+
+    selected =
+        previous.selected;
+
+    renderBoard();
 }
 
 function hasMoves() {
@@ -435,6 +472,8 @@ function checkGameState(pegCount) {
 function newGame() {
 
     selected = null;
+
+    history = [];
 
     initializeBoard();
 
