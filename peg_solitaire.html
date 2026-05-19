@@ -84,13 +84,14 @@
         font-size: 42px;
     }
 
-    .invalid {
-        visibility: hidden;
+    .empty {
+        background: #d7d7d7;
+        cursor: pointer;
+        transition: 0.15s;
     }
 
-    .empty {
-        background: #e0e0e0;
-        cursor: pointer;
+    .empty:hover {
+        background: #c5e1a5;
     }
 
     .peg {
@@ -213,11 +214,18 @@ function renderBoard() {
 
             const value = board[r][c];
 
+            // Invalid corner squares
             if (value === null) {
 
-                cell.classList.add("invalid");
+                cell.style.visibility = "hidden";
 
-            } else if (value === 1) {
+                boardDiv.appendChild(cell);
+
+                continue;
+            }
+
+            // Peg
+            if (value === 1) {
 
                 pegCount++;
 
@@ -225,11 +233,15 @@ function renderBoard() {
 
                 cell.innerHTML = "●";
 
-            } else {
+            }
+
+            // Empty hole
+            else {
 
                 cell.classList.add("empty");
             }
 
+            // Selected peg
             if (
                 selected &&
                 selected.r === r &&
@@ -256,7 +268,7 @@ function handleClick(r, c) {
 
     const value = board[r][c];
 
-    // Clicked a peg
+    // Click peg
     if (value === 1) {
 
         if (
@@ -277,7 +289,7 @@ function handleClick(r, c) {
         return;
     }
 
-    // Clicked empty square
+    // Click empty square
     if (value === 0 && selected) {
 
         const sr = selected.r;
@@ -305,8 +317,10 @@ function handleClick(r, c) {
         const mr = sr + dr / 2;
         const mc = sc + dc / 2;
 
+        // Middle must contain peg
         if (board[mr][mc] !== 1) return;
 
+        // Execute move
         board[sr][sc] = 0;
 
         board[mr][mc] = 0;
@@ -339,8 +353,8 @@ function hasMoves() {
                 const nr = r + dr;
                 const nc = c + dc;
 
-                const mr = r + dr/2;
-                const mc = c + dc/2;
+                const mr = r + dr / 2;
+                const mc = c + dc / 2;
 
                 if (
                     nr < 0 || nr >= 7 ||
