@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Black Hole Game</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Black Hole</title>
 
 <style>
 
@@ -38,61 +38,11 @@
         font-size: 18px;
         padding: 5px 10px;
         border-radius: 6px;
-    }
-
-    #status {
-        font-size: 22px;
-        margin: 15px;
-        font-weight: bold;
-    }
-
-    svg {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        margin-top: 10px;
-    }
-
-    .circle {
-        fill: white;
-        stroke: #444;
-        stroke-width: 2;
-        cursor: pointer;
-        transition: 0.2s;
-    }
-
-    .circle:hover {
-        fill: #eaeaea;
-    }
-
-    .red {
-        fill: #ff7777;
-    }
-
-    .blue {
-        fill: #7799ff;
-    }
-
-    .blackhole {
-        fill: black;
-    }
-
-    .label {
-        font-size: 18px;
-        font-weight: bold;
-        pointer-events: none;
-        dominant-baseline: middle;
-        text-anchor: middle;
-    }
-
-    #result {
-        margin-top: 20px;
-        font-size: 22px;
-        font-weight: bold;
+        margin-left: 10px;
     }
 
     button {
-        margin-top: 20px;
+        margin-left: 20px;
         padding: 10px 20px;
         font-size: 18px;
         border: none;
@@ -106,6 +56,73 @@
         background: #111;
     }
 
+    #status {
+        margin-top: 20px;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    #board {
+        margin-top: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .row {
+        display: flex;
+        gap: 14px;
+    }
+
+    .circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 22px;
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+        transition: 0.15s;
+    }
+
+    .circle:hover {
+        transform: scale(1.08);
+    }
+
+    .red {
+        background: #ef5350;
+        color: white;
+    }
+
+    .blue {
+        background: #42a5f5;
+        color: white;
+    }
+
+    .blackhole {
+        background: black;
+        color: white;
+        border-color: black;
+    }
+
+    #result {
+        margin-top: 30px;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .scoreboard {
+        margin-top: 20px;
+        font-size: 20px;
+        line-height: 1.8;
+    }
+
 </style>
 </head>
 
@@ -116,297 +133,300 @@
 <div class="description">
 
     <p>
-        Players alternate selecting circles from the triangular board.
+        Players alternately claim circles on a triangular board.
     </p>
 
     <p>
-        Each player numbers their own circles in the order they are played.
+        The first two moves get number 1, the next two moves get number 2, and so on.
     </p>
 
     <p>
-        One circle remains empty at the end and becomes the
-        <b>Black Hole</b>.
+        At the end, the single remaining circle becomes the Black Hole.
     </p>
 
     <p>
-        Your score is the sum of your numbered circles adjacent
-        to the Black Hole.
+        Each player's score is the sum of their numbered circles adjacent to the Black Hole.
     </p>
 
 </div>
 
 <div id="controls">
-    Number of rows:
+
+    Number of Rows:
+
     <select id="rowSelect">
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6" selected>6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
+        <option>4</option>
+        <option>5</option>
+        <option selected>6</option>
+        <option>7</option>
+        <option>8</option>
+        <option>9</option>
+        <option>10</option>
     </select>
 
-    <button onclick="resetGame()">New Game</button>
+    <button onclick="startGame()">
+        New Game
+    </button>
+
 </div>
 
 <div id="status"></div>
 
-<svg id="board"></svg>
+<div id="board"></div>
+
+<div class="scoreboard">
+
+    <div>
+        Red Score:
+        <span id="redScore">0</span>
+    </div>
+
+    <div>
+        Blue Score:
+        <span id="blueScore">0</span>
+    </div>
+
+</div>
 
 <div id="result"></div>
 
 <script>
 
-const svg = document.getElementById("board");
-
-const radius = 28;
-const spacingX = 75;
-const spacingY = 65;
-
 let rows = 6;
-let totalCells = 21;
-let movesPerPlayer = 10;
 
-let cells = [];
-
-let moveCount = 0;
-
-let redNum = 1;
-let blueNum = 1;
+let boardData = [];
 
 let currentPlayer = "red";
 
-function setupParameters() {
+let moveNumber = 1;
 
-    rows = parseInt(document.getElementById("rowSelect").value);
+let gameOver = false;
 
-    totalCells = rows * (rows + 1) / 2;
+function startGame() {
 
-    movesPerPlayer = Math.floor((totalCells - 1) / 2);
-}
+    rows = parseInt(
+        document.getElementById("rowSelect").value
+    );
 
-function createBoard() {
-
-    setupParameters();
-
-    cells = [];
-
-    svg.innerHTML = "";
-
-    const width = rows * spacingX + 150;
-    const height = rows * spacingY + 120;
-
-    svg.setAttribute("width", width);
-    svg.setAttribute("height", height);
-
-    const startX = width / 2;
-
-    for (let r = 0; r < rows; r++) {
-
-        const cols = r + 1;
-
-        for (let c = 0; c < cols; c++) {
-
-            const x = startX - (r * spacingX / 2) + c * spacingX;
-            const y = 60 + r * spacingY;
-
-            const group = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "g"
-            );
-
-            const circle = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "circle"
-            );
-
-            circle.setAttribute("cx", x);
-            circle.setAttribute("cy", y);
-            circle.setAttribute("r", radius);
-            circle.setAttribute("class", "circle");
-
-            const text = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "text"
-            );
-
-            text.setAttribute("x", x);
-            text.setAttribute("y", y + 1);
-            text.setAttribute("class", "label");
-
-            group.appendChild(circle);
-            group.appendChild(text);
-
-            svg.appendChild(group);
-
-            const cell = {
-                r,
-                c,
-                owner: null,
-                value: null,
-                circle,
-                text
-            };
-
-            circle.addEventListener("click", () => handleMove(cell));
-
-            cells.push(cell);
-        }
-    }
-}
-
-function handleMove(cell) {
-
-    if (cell.owner !== null) return;
-
-    if (moveCount >= totalCells - 1) return;
-
-    let value;
-
-    if (currentPlayer === "red") {
-
-        value = redNum++;
-
-        cell.circle.classList.add("red");
-
-        cell.text.setAttribute("fill", "darkred");
-
-    } else {
-
-        value = blueNum++;
-
-        cell.circle.classList.add("blue");
-
-        cell.text.setAttribute("fill", "darkblue");
-    }
-
-    cell.owner = currentPlayer;
-    cell.value = value;
-
-    cell.text.textContent = value;
-
-    moveCount++;
-
-    if (moveCount === totalCells - 1) {
-
-        finishGame();
-
-        return;
-    }
-
-    currentPlayer = currentPlayer === "red"
-        ? "blue"
-        : "red";
-
-    updateStatus();
-}
-
-function updateStatus() {
-
-    const nextNum = currentPlayer === "red"
-        ? redNum
-        : blueNum;
-
-    const playerName = currentPlayer === "red"
-        ? "Red"
-        : "Blue";
-
-    document.getElementById("status").textContent =
-        `${playerName} to move (${nextNum})`;
-}
-
-function getNeighbors(target) {
-
-    const dirs = [
-        [-1, -1],
-        [-1, 0],
-        [0, -1],
-        [0, 1],
-        [1, 0],
-        [1, 1]
-    ];
-
-    const neighbors = [];
-
-    for (const [dr, dc] of dirs) {
-
-        const nr = target.r + dr;
-        const nc = target.c + dc;
-
-        const found = cells.find(cell =>
-            cell.r === nr && cell.c === nc
-        );
-
-        if (found) neighbors.push(found);
-    }
-
-    return neighbors;
-}
-
-function finishGame() {
-
-    const blackHole = cells.find(c => c.owner === null);
-
-    blackHole.circle.classList.add("blackhole");
-
-    const neighbors = getNeighbors(blackHole);
-
-    let redScore = 0;
-    let blueScore = 0;
-
-    neighbors.forEach(n => {
-
-        if (n.owner === "red") {
-            redScore += n.value;
-        }
-
-        if (n.owner === "blue") {
-            blueScore += n.value;
-        }
-    });
-
-    let winner;
-
-    if (redScore > blueScore) {
-        winner = "Red wins!";
-    } else if (blueScore > redScore) {
-        winner = "Blue wins!";
-    } else {
-        winner = "It's a draw!";
-    }
-
-    document.getElementById("status").textContent =
-        "Game Over";
-
-    document.getElementById("result").innerHTML =
-        `
-        Black Hole formed.<br><br>
-
-        Red Score: ${redScore}<br>
-        Blue Score: ${blueScore}<br><br>
-
-        <b>${winner}</b>
-        `;
-}
-
-function resetGame() {
-
-    moveCount = 0;
-
-    redNum = 1;
-    blueNum = 1;
+    boardData = [];
 
     currentPlayer = "red";
 
+    moveNumber = 1;
+
+    gameOver = false;
+
     document.getElementById("result").innerHTML = "";
+
+    document.getElementById("redScore")
+        .textContent = "0";
+
+    document.getElementById("blueScore")
+        .textContent = "0";
 
     createBoard();
 
     updateStatus();
 }
 
-resetGame();
+function createBoard() {
+
+    const board =
+        document.getElementById("board");
+
+    board.innerHTML = "";
+
+    for (let r = 0; r < rows; r++) {
+
+        const rowDiv =
+            document.createElement("div");
+
+        rowDiv.classList.add("row");
+
+        const rowData = [];
+
+        for (let c = 0; c <= r; c++) {
+
+            const circle =
+                document.createElement("div");
+
+            circle.classList.add("circle");
+
+            circle.onclick = () =>
+                playMove(r, c, circle);
+
+            rowDiv.appendChild(circle);
+
+            rowData.push({
+                taken: false,
+                player: null,
+                number: null,
+                element: circle
+            });
+        }
+
+        board.appendChild(rowDiv);
+
+        boardData.push(rowData);
+    }
+}
+
+function playMove(r, c, circle) {
+
+    if (gameOver) return;
+
+    const cell = boardData[r][c];
+
+    if (cell.taken) return;
+
+    cell.taken = true;
+
+    cell.player = currentPlayer;
+
+    const displayNumber =
+        Math.ceil(moveNumber / 2);
+
+    cell.number = displayNumber;
+
+    circle.classList.add(currentPlayer);
+
+    circle.textContent = displayNumber;
+
+    moveNumber++;
+
+    if (moveNumber === totalCircles()) {
+
+        finishGame();
+
+        return;
+    }
+
+    currentPlayer =
+        currentPlayer === "red"
+        ? "blue"
+        : "red";
+
+    updateStatus();
+}
+
+function totalCircles() {
+
+    return rows * (rows + 1) / 2;
+}
+
+function updateStatus() {
+
+    document.getElementById("status")
+        .textContent =
+        currentPlayer === "red"
+        ? "Red to move"
+        : "Blue to move";
+}
+
+function finishGame() {
+
+    gameOver = true;
+
+    let blackHole = null;
+
+    for (let r = 0; r < rows; r++) {
+
+        for (let c = 0; c <= r; c++) {
+
+            if (!boardData[r][c].taken) {
+
+                blackHole = {r, c};
+
+                break;
+            }
+        }
+    }
+
+    const bhCell =
+        boardData[blackHole.r][blackHole.c];
+
+    bhCell.element.classList.add("blackhole");
+
+    bhCell.element.textContent = "●";
+
+    let redScore = 0;
+
+    let blueScore = 0;
+
+    const directions = [
+
+        [-1,-1],
+        [-1,0],
+
+        [0,-1],
+        [0,1],
+
+        [1,0],
+        [1,1]
+    ];
+
+    for (const [dr, dc] of directions) {
+
+        const nr = blackHole.r + dr;
+        const nc = blackHole.c + dc;
+
+        if (
+            nr < 0 ||
+            nr >= rows ||
+            nc < 0 ||
+            nc > nr
+        ) continue;
+
+        const neighbor =
+            boardData[nr][nc];
+
+        if (!neighbor.taken) continue;
+
+        if (neighbor.player === "red") {
+
+            redScore += neighbor.number;
+
+        } else {
+
+            blueScore += neighbor.number;
+        }
+    }
+
+    document.getElementById("redScore")
+        .textContent = redScore;
+
+    document.getElementById("blueScore")
+        .textContent = blueScore;
+
+    let resultText = "";
+
+    if (redScore > blueScore) {
+
+        resultText = "Red wins!";
+
+    } else if (blueScore > redScore) {
+
+        resultText = "Blue wins!";
+
+    } else {
+
+        resultText = "Draw!";
+    }
+
+    document.getElementById("status")
+        .textContent = "Game Over";
+
+    document.getElementById("result")
+        .innerHTML =
+        `
+        Black Hole at row ${blackHole.r + 1},
+        position ${blackHole.c + 1}.
+        <br><br>
+        ${resultText}
+        `;
+}
+
+startGame();
 
 </script>
 
