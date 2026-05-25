@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Slitherlink</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 10px;
+}
+
+.description {
+    max-width: 900px;
+    margin: 0 auto 20px auto;
+    line-height: 1.6;
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#controls {
+    margin: 20px;
+}
+
+button,
+select {
+    margin: 8px;
+    padding: 10px 18px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+}
+
+button {
+    background: #333;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #111;
+}
+
+#status {
+    margin-top: 16px;
+    min-height: 28px;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+#board {
+    width: min(92vw, 700px);
+    margin: 24px auto 0;
+    display: block;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    transition: 0.25s;
+}
+
+.cell-bg {
+    fill: #fcfcfc;
+    stroke: #e6e6e6;
+    stroke-width: 1;
+}
+
+.clue {
+    font-size: 22px;
+    font-weight: bold;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    user-select: none;
+    pointer-events: none;
+}
+
+.clue-neutral {
+    fill: #455a64;
+}
+
+.clue-sat {
+    fill: #2e7d32;
+}
+
+.clue-bad {
+    fill: #c62828;
+}
+
+.edge-visible {
+    stroke: #263238;
+    stroke-width: 7;
+    stroke-linecap: round;
+    opacity: 0;
+    transition: 0.12s;
+    pointer-events: none;
+}
+
+.edge-hit {
+    stroke: rgba(0,0,0,0.001);
+    stroke-width: 18;
+    stroke-linecap: round;
+    cursor: pointer;
+}
+
+.cross {
+    stroke: #b0b0b0;
+    stroke-width: 3;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dot {
+    fill: #263238;
+    pointer-events: none;
+    transition: 0.2s;
+}
+
+svg.solved {
+    background: #f1fff1;
+}
+
+svg.solved .edge-visible {
+    stroke: #2e7d32;
+}
+
+svg.solved .dot {
+    fill: #2e7d32;
+}
+
+svg.solved .clue-sat {
+    fill: #2e7d32;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Slitherlink</h1>
+
+<div class="description">
+    <p>
+        Draw a single loop on the grid.
+        Each number tells how many surrounding edges belong to the loop.
+    </p>
+
+    <p>
+        Single click to toggle a line.
+        Double click to place or remove a cross.
+    </p>
+
+    <p>
+        Every puzzle generated is solvable and has a unique solution.
+    </p>
+</div>
+
+<div id="controls">
+    Board Size:
+    <select id="sizeSelect">
+        <option>4</option>
+        <option selected>5</option>
+        <option>6</option>
+        <option>7</option>
+    </select>
+
+    <button id="newPuzzleBtn">New Puzzle</button>
+    <button id="resetBtn">Reset Puzzle</button>
+</div>
+
+<div id="status"></div>
+
+<svg id="board"></svg>
+
+<script>
+(() => {
+
+let SIZE = 5;
+
+const STEP = 72;
+const MARGIN = 32;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const boardSvg = document.getElementById("board");
+const statusEl = document.getElementById("status");
+const sizeSelect = document.getElementById("sizeSelect");
+const newPuzzleBtn = document.getElementById("newPuzzleBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+let hIndex = [];
+let vIndex = [];
+let edgeList = [];
+let cellList = [];
+let edgeCells = [];
+let edgeVertices = [];
+let vertexEdges = [];
+let clueElems = [];
+let edgeElems = [];
+
+let clues = [];
+let solutionMask = [];
+let edgeState = [];
+let generating = false;
+
+function svgEl(name, attrs = {}) {
+    const el = document.createElementNS(SVG_NS, name);
+    for (const [k, v] of Object.entries(attrs)) {
+        el.setAttribute(k, String(v));
+    }
+    return el;
+}
+
+function randInt(a, b) {
+    return Math.floor(Math.random() * (b - a + 1)) + a;
+}
+
+function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = randInt(0, i);
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function buildGeometry() {
+    edgeList = [];
+    cellList = [];
+    edgeCells = [];
+    edgeVertices = [];
+    vertexEdges = Array.from(
+        { length: (SIZE + 1) * (SIZE + 1) },
+        () => []
+    );
+    clueElems = [];
+    edgeElems = [];
+
+    boardSvg.innerHTML = "";
+
+    hIndex = Array.from(
+        { length: SIZE + 1 },
+        () => Array(SIZE).fill(-1)
+    );
+
+    vIndex = Array.from(
+        { length: SIZE },
+        () => Array(SIZE + 1).fill(-1)
+    );
+
+    let idx = 0;
+
+    for (let r = 0; r <= SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            hIndex[r][c] = idx;
+            edgeList.push({
+                idx,
+                x1: MARGIN + c * STEP,
+                y1: MARGIN + r * STEP,
+                x2: MARGIN + (c + 1) * STEP,
+                y2: MARGIN + r * STEP
+            });
+            edgeCells.push([]);
+            edgeVertices.push([
+                r * (SIZE + 1) + c,
+                r * (SIZE + 1) + (c + 1)
+            ]);
+            vertexEdges[r * (SIZE + 1) + c].push(idx);
+            vertexEdges[r * (SIZE + 1) + (c + 1)].push(idx);
+            idx++;
+        }
+    }
+
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c <= SIZE; c++) {
+            vIndex[r][c] = idx;
+            edgeList.push({
+                idx,
+                x1: MARGIN + c * STEP,
+                y1: MARGIN + r * STEP,
+                x2: MARGIN + c * STEP,
+                y2: MARGIN + (r + 1) * STEP
+            });
+            edgeCells.push([]);
+            edgeVertices.push([
+                r * (SIZE + 1) + c,
+                (r + 1) * (SIZE + 1) + c
+            ]);
+            vertexEdges[r * (SIZE + 1) + c].push(idx);
+            vertexEdges[(r + 1) * (SIZE + 1) + c].push(idx);
+            idx++;
+        }
+    }
+
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            const cellIndex = r * SIZE + c;
+            const edges = [
+                hIndex[r][c],
+                hIndex[r + 1][c],
+                vIndex[r][c],
+                vIndex[r][c + 1]
+            ];
+            cellList.push({
+                idx: cellIndex,
+                r,
+                c,
+                edges
+            });
+            for (const e of edges) {
+                edgeCells[e].push(cellIndex);
+            }
+        }
+    }
+
+    const boardPx = MARGIN * 2 + SIZE * STEP;
+    boardSvg.setAttribute("viewBox", `0 0 ${boardPx} ${boardPx}`);
+    boardSvg.setAttribute("width", boardPx);
+    boardSvg.setAttribute("height", boardPx);
+
+    boardSvg.appendChild(svgEl("rect", {
+        x: 0,
+        y: 0,
+        width: boardPx,
+        height: boardPx,
+        rx: 16,
+        fill: "#ffffff"
+    }));
+
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            boardSvg.appendChild(svgEl("rect", {
+                x: MARGIN + c * STEP,
+                y: MARGIN + r * STEP,
+                width: STEP,
+                height: STEP,
+                class: "cell-bg"
+            }));
+
+            const clue = svgEl("text", {
+                x: MARGIN + c * STEP + STEP / 2,
+                y: MARGIN + r * STEP + STEP / 2,
+                class: "clue clue-neutral"
+            });
+            clue.textContent = "";
+            boardSvg.appendChild(clue);
+            clueElems.push(clue);
+        }
+    }
+
+    for (const edge of edgeList) {
+        const visible = svgEl("line", {
+            x1: edge.x1,
+            y1: edge.y1,
+            x2: edge.x2,
+            y2: edge.y2,
+            class: "edge-visible"
+        });
+
+        const hit = svgEl("line", {
+            x1: edge.x1,
+            y1: edge.y1,
+            x2: edge.x2,
+            y2: edge.y2,
+            class: "edge-hit"
+        });
+
+        const cross1 = svgEl("line", { class: "cross" });
+        const cross2 = svgEl("line", { class: "cross" });
+
+        const mx = (edge.x1 + edge.x2) / 2;
+        const my = (edge.y1 + edge.y2) / 2;
+        const d = 8;
+
+        cross1.setAttribute("x1", mx - d);
+        cross1.setAttribute("y1", my - d);
+        cross1.setAttribute("x2", mx + d);
+        cross1.setAttribute("y2", my + d);
+
+        cross2.setAttribute("x1", mx + d);
+        cross2.setAttribute("y1", my - d);
+        cross2.setAttribute("x2", mx - d);
+        cross2.setAttribute("y2", my + d);
+
+        const edgeObj = {
+            visible,
+            cross1,
+            cross2,
+            clickTimer: null
+        };
+
+        hit.addEventListener("click", () => {
+            if (generating) return;
+            if (edgeObj.clickTimer) {
+                clearTimeout(edgeObj.clickTimer);
+            }
+            edgeObj.clickTimer = setTimeout(() => {
+                edgeObj.clickTimer = null;
+                toggleLine(edge.idx);
+            }, 180);
+        });
+
+        hit.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            if (edgeObj.clickTimer) {
+                clearTimeout(edgeObj.clickTimer);
+                edgeObj.clickTimer = null;
+            }
+            toggleCross(edge.idx);
+        });
+
+        boardSvg.appendChild(visible);
+        boardSvg.appendChild(cross1);
+        boardSvg.appendChild(cross2);
+        boardSvg.appendChild(hit);
+        edgeElems.push(edgeObj);
+    }
+
+    for (let r = 0; r <= SIZE; r++) {
+        for (let c = 0; c <= SIZE; c++) {
+            boardSvg.appendChild(svgEl("circle", {
+                cx: MARGIN + c * STEP,
+                cy: MARGIN + r * STEP,
+                r: 4,
+                class: "dot"
+            }));
+        }
+    }
+}
+
+function generateRandomPolyomino() {
+    const total = SIZE * SIZE;
+    const minSize = Math.max(4, Math.floor(total * 0.35));
+    const maxSize = Math.max(minSize + 1, Math.floor(total * 0.60));
+    const target = randInt(minSize, maxSize);
+
+    const occupied = Array.from(
+        { length: SIZE },
+        () => Array(SIZE).fill(false)
+    );
+
+    const counts = Array.from(
+        { length: SIZE },
+        () => Array(SIZE).fill(0)
+    );
+
+    const drs = [1, -1, 0, 0];
+    const dcs = [0, 0, 1, -1];
+
+    function bump(r, c) {
+        for (let k = 0; k < 4; k++) {
+            const nr = r + drs[k];
+            const nc = c + dcs[k];
+            if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
+            counts[nr][nc]++;
+        }
+    }
+
+    const seedR = randInt(0, SIZE - 1);
+    const seedC = randInt(0, SIZE - 1);
+    occupied[seedR][seedC] = true;
+    bump(seedR, seedC);
+
+    let placed = 1;
+    let safety = 0;
+
+    while (placed < target && safety < 3000) {
+        safety++;
+
+        const frontier = [];
+        for (let r = 0; r < SIZE; r++) {
+            for (let c = 0; c < SIZE; c++) {
+                if (!occupied[r][c] && counts[r][c] === 1) {
+                    frontier.push([r, c]);
+                }
+            }
+        }
+
+        if (frontier.length === 0) {
+            return null;
+        }
+
+        const [r, c] = frontier[randInt(0, frontier.length - 1)];
+        occupied[r][c] = true;
+        bump(r, c);
+        placed++;
+    }
+
+    if (placed < target) return null;
+    return occupied;
+}
+
+function solutionMaskFromPolyomino(occupied) {
+    const mask = new Uint8Array(edgeList.length);
+
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            if (!occupied[r][c]) continue;
+
+            if (r === 0 || !occupied[r - 1][c]) {
+                mask[hIndex[r][c]] = 1;
+            }
+            if (r === SIZE - 1 || !occupied[r + 1][c]) {
+                mask[hIndex[r + 1][c]] = 1;
+            }
+            if (c === 0 || !occupied[r][c - 1]) {
+                mask[vIndex[r][c]] = 1;
+            }
+            if (c === SIZE - 1 || !occupied[r][c + 1]) {
+                mask[vIndex[r][c + 1]] = 1;
+            }
+        }
+    }
+
+    return mask;
+}
+
+function cluesFromSolutionMask(mask) {
+    const arr = new Array(cellList.length).fill(0);
+    for (const cell of cellList) {
+        let count = 0;
+        for (const e of cell.edges) {
+            if (mask[e]) count++;
+        }
+        arr[cell.idx] = count;
+    }
+    return arr;
+}
+
+function countSolutions(currentClues, preferMask, limit = 2) {
+    const E = edgeList.length;
+    const V = vertexEdges.length;
+    const C = cellList.length;
+
+    const assign = new Int8Array(E);
+    assign.fill(-1);
+
+    const cellOn = new Uint8Array(C);
+    const cellUndec = new Uint8Array(C);
+    cellUndec.fill(4);
+
+    const vertOn = new Uint8Array(V);
+    const vertUndec = new Uint8Array(V);
+    for (let v = 0; v < V; v++) {
+        vertUndec[v] = vertexEdges[v].length;
+    }
+
+    let solutions = 0;
+
+    function snapshot() {
+        return {
+            assign: assign.slice(),
+            cellOn: cellOn.slice(),
+            cellUndec: cellUndec.slice(),
+            vertOn: vertOn.slice(),
+            vertUndec: vertUndec.slice()
+        };
+    }
+
+    function restore(s) {
+        assign.set(s.assign);
+        cellOn.set(s.cellOn);
+        cellUndec.set(s.cellUndec);
+        vertOn.set(s.vertOn);
+        vertUndec.set(s.vertUndec);
+    }
+
+    function setEdge(e, val) {
+        const cur = assign[e];
+        if (cur !== -1) return cur === val;
+
+        assign[e] = val;
+
+        for (const c of edgeCells[e]) {
+            cellUndec[c]--;
+            if (val === 1) cellOn[c]++;
+        }
+        for (const v of edgeVertices[e]) {
+            vertUndec[v]--;
+            if (val === 1) vertOn[v]++;
+        }
+
+        return true;
+    }
+
+    function topologyInvalid() {
+        const seen = new Uint8Array(V);
+        let components = 0;
+        let closedComponents = 0;
+        let hasSelected = false;
+
+        for (let v = 0; v < V; v++) {
+            if (vertOn[v] === 0) continue;
+            hasSelected = true;
+            if (seen[v]) continue;
+
+            components++;
+            let allDeg2 = true;
+            const stack = [v];
+            seen[v] = 1;
+
+            while (stack.length) {
+                const u = stack.pop();
+                if (vertOn[u] !== 2) allDeg2 = false;
+
+                for (const e of vertexEdges[u]) {
+                    if (assign[e] !== 1) continue;
+                    const [a, b] = edgeVertices[e];
+                    const nxt = (a === u) ? b : a;
+                    if (!seen[nxt]) {
+                        seen[nxt] = 1;
+                        stack.push(nxt);
+                    }
+                }
+            }
+
+            if (allDeg2) closedComponents++;
+        }
+
+        if (!hasSelected) return false;
+        if (closedComponents > 1) return true;
+        if (closedComponents === 1 && components > 1) return true;
+        return false;
+    }
+
+    function propagate() {
+        let changed = true;
+
+        while (changed) {
+            changed = false;
+
+            // Cell constraints
+            for (let i = 0; i < C; i++) {
+                const clue = currentClues[i];
+                if (clue == null) continue;
+
+                if (cellOn[i] > clue) return false;
+                if (cellOn[i] + cellUndec[i] < clue) return false;
+
+                if (cellOn[i] === clue) {
+                    for (const e of cellList[i].edges) {
+                        if (assign[e] === -1) {
+                            if (!setEdge(e, 0)) return false;
+                            changed = true;
+                        }
+                    }
+                } else if (cellOn[i] + cellUndec[i] === clue) {
+                    for (const e of cellList[i].edges) {
+                        if (assign[e] === -1) {
+                            if (!setEdge(e, 1)) return false;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            // Vertex constraints
+            for (let v = 0; v < V; v++) {
+                if (vertOn[v] > 2) return false;
+
+                if (vertOn[v] === 2) {
+                    for (const e of vertexEdges[v]) {
+                        if (assign[e] === -1) {
+                            if (!setEdge(e, 0)) return false;
+                            changed = true;
+                        }
+                    }
+                } else if (vertOn[v] === 1) {
+                    if (vertUndec[v] === 0) return false;
+                    if (vertUndec[v] === 1) {
+                        for (const e of vertexEdges[v]) {
+                            if (assign[e] === -1) {
+                                if (!setEdge(e, 1)) return false;
+                                changed = true;
+                            }
+                        }
+                    }
+                } else if (vertOn[v] === 0) {
+                    if (vertUndec[v] === 1) {
+                        for (const e of vertexEdges[v]) {
+                            if (assign[e] === -1) {
+                                if (!setEdge(e, 0)) return false;
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (topologyInvalid()) return false;
+        }
+
+        return true;
+    }
+
+    function chooseEdge() {
+        let best = -1;
+        let bestScore = Infinity;
+
+        for (let e = 0; e < E; e++) {
+            if (assign[e] !== -1) continue;
+
+            let score = 0;
+
+            for (const c of edgeCells[e]) {
+                const clue = currentClues[c];
+                if (clue != null) {
+                    score += cellUndec[c] * 12;
+                    score += Math.abs((cellOn[c] + cellUndec[c]) - clue) * 16;
+                    score += Math.abs(cellOn[c] - clue) * 3;
+                }
+            }
+
+            for (const v of edgeVertices[e]) {
+                score += vertUndec[v] * 2;
+                if (vertOn[v] === 1) score -= 5;
+                if (vertOn[v] === 2) score -= 12;
+            }
+
+            if (score < bestScore) {
+                bestScore = score;
+                best = e;
+            }
+        }
+
+        return best;
+    }
+
+    function finalValid() {
+        for (let i = 0; i < C; i++) {
+            const clue = currentClues[i];
+            if (clue != null && cellOn[i] !== clue) return false;
+        }
+
+        let startVertex = -1;
+        let usedVertices = 0;
+        const adj = Array.from({ length: V }, () => []);
+
+        for (let e = 0; e < E; e++) {
+            if (assign[e] !== 1) continue;
+            const [a, b] = edgeVertices[e];
+            adj[a].push(b);
+            adj[b].push(a);
+        }
+
+        for (let v = 0; v < V; v++) {
+            if (vertOn[v] === 0) continue;
+            if (vertOn[v] !== 2) return false;
+            usedVertices++;
+            if (startVertex === -1) startVertex = v;
+        }
+
+        if (usedVertices === 0) return false;
+
+        const seen = new Uint8Array(V);
+        const stack = [startVertex];
+        seen[startVertex] = 1;
+
+        while (stack.length) {
+            const v = stack.pop();
+            for (const nxt of adj[v]) {
+                if (!seen[nxt]) {
+                    seen[nxt] = 1;
+                    stack.push(nxt);
+                }
+            }
+        }
+
+        for (let v = 0; v < V; v++) {
+            if (vertOn[v] === 2 && !seen[v]) return false;
+        }
+
+        return true;
+    }
+
+    function search() {
+        if (solutions >= limit) return;
+
+        if (!propagate()) return;
+
+        let undecided = false;
+        for (let e = 0; e < E; e++) {
+            if (assign[e] === -1) {
+                undecided = true;
+                break;
+            }
+        }
+
+        if (!undecided) {
+            if (finalValid()) solutions++;
+            return;
+        }
+
+        const e = chooseEdge();
+        if (e === -1) return;
+
+        const order = (preferMask && preferMask[e] === 1) ? [1, 0] : [0, 1];
+        const snap = snapshot();
+
+        for (const val of order) {
+            restore(snap);
+            if (setEdge(e, val)) {
+                search();
+            }
+            if (solutions >= limit) return;
+        }
+
+        restore(snap);
+    }
+
+    search();
+    return solutions;
+}
+
+function thinClues(fullClues, preferMask) {
+    const current = fullClues.slice();
+    const indices = shuffle([...Array(current.length).keys()]);
+    const minKeep = Math.max(8, Math.floor(current.length * 0.35));
+    let kept = current.filter(v => v != null).length;
+
+    for (const idx of indices) {
+        if (kept <= minKeep) break;
+        if (current[idx] == null) continue;
+
+        const backup = current[idx];
+        current[idx] = null;
+
+        if (countSolutions(current, preferMask, 2) === 1) {
+            kept--;
+        } else {
+            current[idx] = backup;
+        }
+    }
+
+    return current;
+}
+
+function generatePuzzle() {
+    generating = true;
+    statusEl.style.color = "#111";
+    statusEl.textContent = "Generating puzzle...";
+
+    for (let attempt = 0; attempt < 250; attempt++) {
+        const occupied = generateRandomPolyomino();
+        if (!occupied) continue;
+
+        const sol = solutionMaskFromPolyomino(occupied);
+        const fullClues = cluesFromSolutionMask(sol);
+
+        if (countSolutions(fullClues, sol, 2) !== 1) {
+            continue;
+        }
+
+        const sparseClues = thinClues(fullClues, sol);
+        if (countSolutions(sparseClues, sol, 2) !== 1) {
+            continue;
+        }
+
+        clues = sparseClues;
+        solutionMask = sol;
+        edgeState = Array(edgeList.length).fill(0);
+        boardSvg.classList.remove("solved");
+        generating = false;
+        render();
+        return;
+    }
+
+    generating = false;
+    statusEl.textContent = "Generation failed. Try New Puzzle again.";
+}
+
+function toggleLine(i) {
+    if (generating) return;
+
+    if (edgeState[i] === 1) {
+        edgeState[i] = 0;
+    } else {
+        edgeState[i] = 1;
+    }
+    render();
+}
+
+function toggleCross(i) {
+    if (generating) return;
+
+    if (edgeState[i] === 2) {
+        edgeState[i] = 0;
+    } else {
+        edgeState[i] = 2;
+    }
+    render();
+}
+
+function render() {
+    for (let i = 0; i < clues.length; i++) {
+        const clue = clueElems[i];
+
+        if (clues[i] == null) {
+            clue.textContent = "";
+            clue.classList.remove("clue-neutral", "clue-sat", "clue-bad");
+            continue;
+        }
+
+        clue.textContent = String(clues[i]);
+
+        let current = 0;
+        for (const e of cellList[i].edges) {
+            if (edgeState[e] === 1) current++;
+        }
+
+        clue.classList.remove("clue-neutral", "clue-sat", "clue-bad");
+        if (current === clues[i]) {
+            clue.classList.add("clue-sat");
+        } else if (current > clues[i]) {
+            clue.classList.add("clue-bad");
+        } else {
+            clue.classList.add("clue-neutral");
+        }
+    }
+
+    for (let i = 0; i < edgeList.length; i++) {
+        const obj = edgeElems[i];
+        obj.visible.style.opacity = edgeState[i] === 1 ? 1 : 0;
+        obj.cross1.style.opacity = edgeState[i] === 2 ? 1 : 0;
+        obj.cross2.style.opacity = edgeState[i] === 2 ? 1 : 0;
+    }
+
+    checkSolved();
+}
+
+function checkSolved() {
+    // Check clue satisfaction
+    for (let i = 0; i < cellList.length; i++) {
+        const clue = clues[i];
+        if (clue == null) continue;
+
+        let count = 0;
+        for (const e of cellList[i].edges) {
+            if (edgeState[e] === 1) count++;
+        }
+
+        if (count !== clue) {
+            boardSvg.classList.remove("solved");
+            statusEl.textContent = "Keep going.";
+            return;
+        }
+    }
+
+    // Build degree and adjacency among selected edges
+    const V = vertexEdges.length;
+    const deg = new Uint8Array(V);
+    const adj = Array.from({ length: V }, () => []);
+
+    let selectedEdgeCount = 0;
+    let startVertex = -1;
+
+    for (let e = 0; e < edgeList.length; e++) {
+        if (edgeState[e] !== 1) continue;
+        selectedEdgeCount++;
+
+        const [a, b] = edgeVertices[e];
+        deg[a]++;
+        deg[b]++;
+        adj[a].push(b);
+        adj[b].push(a);
+    }
+
+    if (selectedEdgeCount === 0) {
+        boardSvg.classList.remove("solved");
+        statusEl.textContent = "Keep going.";
+        return;
+    }
+
+    for (let v = 0; v < V; v++) {
+        if (deg[v] === 0) continue;
+        if (deg[v] !== 2) {
+            boardSvg.classList.remove("solved");
+            statusEl.textContent = "Keep going.";
+            return;
+        }
+        if (startVertex === -1) startVertex = v;
+    }
+
+    const seen = new Uint8Array(V);
+    const stack = [startVertex];
+    seen[startVertex] = 1;
+
+    while (stack.length) {
+        const v = stack.pop();
+        for (const nxt of adj[v]) {
+            if (!seen[nxt]) {
+                seen[nxt] = 1;
+                stack.push(nxt);
+            }
+        }
+    }
+
+    for (let v = 0; v < V; v++) {
+        if (deg[v] === 2 && !seen[v]) {
+            boardSvg.classList.remove("solved");
+            statusEl.textContent = "Keep going.";
+            return;
+        }
+    }
+
+    boardSvg.classList.add("solved");
+    statusEl.textContent = "Solved!";
+}
+
+newPuzzleBtn.addEventListener("click", () => {
+    if (generating) return;
+    SIZE = parseInt(sizeSelect.value);
+    buildGeometry();
+    generatePuzzle();
+});
+
+resetBtn.addEventListener("click", () => {
+    if (generating) return;
+    edgeState = Array(edgeList.length).fill(0);
+    boardSvg.classList.remove("solved");
+    render();
+});
+
+buildGeometry();
+generatePuzzle();
+
+})();
+</script>
+
+</body>
+</html>
