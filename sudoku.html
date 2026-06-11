@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sudoku</title>
+
+<style>
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 10px;
+}
+
+.description {
+    max-width: 900px;
+    margin: auto;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#controls {
+    margin: 20px;
+}
+
+button,
+select {
+    padding: 10px 16px;
+    font-size: 16px;
+    margin: 5px;
+    border-radius: 8px;
+    border: none;
+}
+
+button {
+    background: #333;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #111;
+}
+
+#status {
+    font-size: 22px;
+    min-height: 30px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+#board {
+    width: 540px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 0;
+    background: #111;
+    padding: 4px;
+    border-radius: 10px;
+    transition: 0.3s;
+}
+
+#board.solved {
+    background: #d8f5d8;
+}
+
+.cell {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #bbb;
+    box-sizing: border-box;
+
+    font-size: 28px;
+    text-align: center;
+    font-weight: bold;
+
+    outline: none;
+    background: white;
+}
+
+.cell.given {
+    background: #e5e5e5;
+}
+
+.cell.active {
+    background: #fff8c4;
+}
+
+.cell.rowcol {
+    background: #eef5ff;
+}
+
+.cell.box {
+    background: #f3f8ff;
+}
+
+.cell.error {
+    background: #ffebee !important;
+    color: #c62828 !important;
+}
+
+.separator-right {
+    border-right: 5px solid #111 !important;
+}
+
+.separator-bottom {
+    border-bottom: 5px solid #111 !important;
+}
+
+@media(max-width:650px){
+
+    #board{
+        width:95vw;
+    }
+
+    .cell{
+        width:auto;
+        height:10vw;
+        font-size:22px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Sudoku</h1>
+
+<div class="description">
+
+<p>
+Fill every row, column and 3×3 box with digits 1–9.
+</p>
+
+<p>
+Each generated puzzle has a unique solution.
+</p>
+
+</div>
+
+<div id="controls">
+
+<select id="difficulty">
+    <option value="easy">Easy</option>
+    <option value="medium" selected>Medium</option>
+    <option value="hard">Hard</option>
+</select>
+
+<button id="newPuzzleBtn">
+    New Puzzle
+</button>
+
+<button id="resetBtn">
+    Restart Puzzle
+</button>
+
+</div>
+
+<div id="status"></div>
+
+<div id="board"></div>
+
+<script>
+
+const boardEl =
+    document.getElementById("board");
+
+const statusEl =
+    document.getElementById("status");
+
+const difficultyEl =
+    document.getElementById("difficulty");
+
+const newPuzzleBtn =
+    document.getElementById("newPuzzleBtn");
+
+const resetBtn =
+    document.getElementById("resetBtn");
+
+const SIZE = 9;
+
+let solutionBoard = [];
+
+let puzzleBoard = [];
+
+let originalPuzzle = [];
+
+let inputs = [];
+
+let activeCell = null;
+
+function copyBoard(board){
+
+    return board.map(
+        row => row.slice()
+    );
+}
+
+function shuffle(array){
+
+    const arr =
+        array.slice();
+
+    for(
+        let i=arr.length-1;
+        i>0;
+        i--
+    ){
+
+        const j =
+            Math.floor(
+                Math.random()*(i+1)
+            );
+
+        [arr[i],arr[j]]
+            =
+        [arr[j],arr[i]];
+    }
+
+    return arr;
+}
+
+function createSolvedBoard(){
+
+    const board =
+        Array.from(
+            {length:9},
+            ()=>Array(9).fill(0)
+        );
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            board[r][c]
+                =
+            (
+                r*3
+                +
+                Math.floor(r/3)
+                +
+                c
+            )%9
+            +1;
+        }
+    }
+
+    const digitPerm =
+        shuffle(
+            [1,2,3,4,5,6,7,8,9]
+        );
+
+    const digitMap =
+        {};
+
+    for(
+        let i=1;
+        i<=9;
+        i++
+    ){
+
+        digitMap[i]
+            =
+        digitPerm[i-1];
+    }
+
+    const rowBands =
+        shuffle([0,1,2]);
+
+    const rows = [];
+
+    for(
+        const band
+        of rowBands
+    ){
+
+        rows.push(
+            ...shuffle(
+                [0,1,2]
+            ).map(
+                x=>band*3+x
+            )
+        );
+    }
+
+    const colBands =
+        shuffle([0,1,2]);
+
+    const cols = [];
+
+    for(
+        const band
+        of colBands
+    ){
+
+        cols.push(
+            ...shuffle(
+                [0,1,2]
+            ).map(
+                x=>band*3+x
+            )
+        );
+    }
+
+    const result =
+        Array.from(
+            {length:9},
+            ()=>Array(9)
+        );
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            result[r][c]
+                =
+            digitMap[
+                board[
+                    rows[r]
+                ][
+                    cols[c]
+                ]
+            ];
+        }
+    }
+
+    return result;
+}
+
+function boxIndex(r,c){
+
+    return (
+        Math.floor(r/3)*3
+        +
+        Math.floor(c/3)
+    );
+}
+
+function popcount(x){
+
+    let count=0;
+
+    while(x){
+
+        x&=x-1;
+
+        count++;
+    }
+
+    return count;
+}
+
+function digitsFromMask(mask){
+
+    const digits=[];
+
+    for(
+        let d=1;
+        d<=9;
+        d++
+    ){
+
+        if(
+            mask &
+            (
+                1<<(d-1)
+            )
+        ){
+            digits.push(d);
+        }
+    }
+
+    return digits;
+}
+function countSolutions(board, limit=2){
+
+    const rowMask =
+        Array(9).fill(0);
+
+    const colMask =
+        Array(9).fill(0);
+
+    const boxMask =
+        Array(9).fill(0);
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            const v =
+                board[r][c];
+
+            if(v===0)
+                continue;
+
+            const bit =
+                1<<(v-1);
+
+            rowMask[r] |= bit;
+            colMask[c] |= bit;
+            boxMask[
+                boxIndex(r,c)
+            ] |= bit;
+        }
+    }
+
+    let solutions = 0;
+
+    function dfs(){
+
+        if(
+            solutions >= limit
+        ) return;
+
+        let bestR = -1;
+        let bestC = -1;
+        let bestMask = 0;
+        let bestCount = 10;
+
+        for(
+            let r=0;
+            r<9;
+            r++
+        ){
+
+            for(
+                let c=0;
+                c<9;
+                c++
+            ){
+
+                if(
+                    board[r][c]
+                    !==0
+                ) continue;
+
+                const mask =
+                    511 &
+                    ~(
+                        rowMask[r]
+                        |
+                        colMask[c]
+                        |
+                        boxMask[
+                            boxIndex(r,c)
+                        ]
+                    );
+
+                const cnt =
+                    popcount(mask);
+
+                if(cnt===0)
+                    return;
+
+                if(
+                    cnt < bestCount
+                ){
+
+                    bestCount = cnt;
+                    bestR = r;
+                    bestC = c;
+                    bestMask = mask;
+                }
+            }
+        }
+
+        if(bestR===-1){
+
+            solutions++;
+            return;
+        }
+
+        const digits =
+            digitsFromMask(
+                bestMask
+            );
+
+        for(
+            const d
+            of digits
+        ){
+
+            const bit =
+                1<<(d-1);
+
+            board[
+                bestR
+            ][
+                bestC
+            ] = d;
+
+            rowMask[
+                bestR
+            ] |= bit;
+
+            colMask[
+                bestC
+            ] |= bit;
+
+            boxMask[
+                boxIndex(
+                    bestR,
+                    bestC
+                )
+            ] |= bit;
+
+            dfs();
+
+            board[
+                bestR
+            ][
+                bestC
+            ] = 0;
+
+            rowMask[
+                bestR
+            ] &= ~bit;
+
+            colMask[
+                bestC
+            ] &= ~bit;
+
+            boxMask[
+                boxIndex(
+                    bestR,
+                    bestC
+                )
+            ] &= ~bit;
+        }
+    }
+
+    dfs();
+
+    return solutions;
+}
+
+function clueTarget(){
+
+    const d =
+        difficultyEl.value;
+
+    if(d==="easy")
+        return 42;
+
+    if(d==="hard")
+        return 28;
+
+    return 34;
+}
+
+function generatePuzzle(){
+
+    statusEl.textContent =
+        "Generating puzzle...";
+
+    const solution =
+        createSolvedBoard();
+
+    const puzzle =
+        copyBoard(solution);
+
+    const cells =
+        shuffle(
+            [...Array(81).keys()]
+        );
+
+    let cluesLeft = 81;
+
+    const target =
+        clueTarget();
+
+    for(
+        const idx
+        of cells
+    ){
+
+        if(
+            cluesLeft
+            <=
+            target
+        ) break;
+
+        const r =
+            Math.floor(
+                idx/9
+            );
+
+        const c =
+            idx%9;
+
+        const backup =
+            puzzle[r][c];
+
+        puzzle[r][c] = 0;
+
+        const count =
+            countSolutions(
+                copyBoard(
+                    puzzle
+                ),
+                2
+            );
+
+        if(count===1){
+
+            cluesLeft--;
+
+        }else{
+
+            puzzle[r][c]
+                =
+            backup;
+        }
+    }
+
+    solutionBoard =
+        copyBoard(solution);
+
+    puzzleBoard =
+        copyBoard(puzzle);
+
+    originalPuzzle =
+        copyBoard(puzzle);
+
+    renderBoard();
+
+    statusEl.textContent =
+        "";
+}
+
+function renderBoard(){
+
+    boardEl.innerHTML = "";
+
+    inputs =
+        Array.from(
+            {length:9},
+            ()=>Array(9)
+        );
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            const cell =
+                document.createElement(
+                    "input"
+                );
+
+            cell.type = "text";
+
+            cell.maxLength = 1;
+
+            cell.className =
+                "cell";
+
+            if(
+                c===2
+                ||
+                c===5
+            ){
+
+                cell.classList.add(
+                    "separator-right"
+                );
+            }
+
+            if(
+                r===2
+                ||
+                r===5
+            ){
+
+                cell.classList.add(
+                    "separator-bottom"
+                );
+            }
+
+            if(
+                puzzleBoard[r][c]
+                !==0
+            ){
+
+                cell.value =
+                    puzzleBoard[r][c];
+
+                cell.readOnly =
+                    true;
+
+                cell.classList.add(
+                    "given"
+                );
+
+            }else{
+
+                cell.addEventListener(
+                    "input",
+                    ()=>{
+
+                        let v =
+                            cell.value
+                            .replace(
+                                /[^1-9]/g,
+                                ""
+                            );
+
+                        cell.value =
+                            v;
+
+                        puzzleBoard[r][c]
+                            =
+                        v
+                        ?
+                        parseInt(v)
+                        :
+                        0;
+
+                        markErrors();
+
+                        checkSolved();
+                    }
+                );
+
+                cell.addEventListener(
+                    "focus",
+                    ()=>{
+
+                        activeCell =
+                        {
+                            r,
+                            c
+                        };
+
+                        updateHighlights();
+                    }
+                );
+            }
+
+            boardEl.appendChild(
+                cell
+            );
+
+            inputs[r][c]
+                =
+            cell;
+        }
+    }
+
+    updateHighlights();
+
+    markErrors();
+}
+
+function updateHighlights(){
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            const cell =
+                inputs[r][c];
+
+            cell.classList.remove(
+                "active",
+                "rowcol",
+                "box"
+            );
+
+            if(
+                !activeCell
+            ) continue;
+
+            const sameRow =
+                r===activeCell.r;
+
+            const sameCol =
+                c===activeCell.c;
+
+            const sameBox =
+                Math.floor(r/3)
+                ===
+                Math.floor(
+                    activeCell.r/3
+                )
+                &&
+                Math.floor(c/3)
+                ===
+                Math.floor(
+                    activeCell.c/3
+                );
+
+            if(
+                sameRow
+                ||
+                sameCol
+            ){
+                cell.classList.add(
+                    "rowcol"
+                );
+            }
+
+            if(
+                sameBox
+            ){
+                cell.classList.add(
+                    "box"
+                );
+            }
+
+            if(
+                sameRow
+                ||
+                sameCol
+                ||
+                sameBox
+            ){
+                cell.classList.add(
+                    "active"
+                );
+            }
+        }
+    }
+}
+function markErrors(){
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            inputs[r][c]
+                .classList
+                .remove(
+                    "error"
+                );
+        }
+    }
+
+    // Rows
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        const seen = {};
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            const v =
+                puzzleBoard[r][c];
+
+            if(v===0)
+                continue;
+
+            if(!seen[v])
+                seen[v]=[];
+
+            seen[v].push(
+                [r,c]
+            );
+        }
+
+        for(
+            const v
+            in seen
+        ){
+
+            if(
+                seen[v].length
+                > 1
+            ){
+
+                for(
+                    const [rr,cc]
+                    of seen[v]
+                ){
+
+                    inputs[rr][cc]
+                        .classList
+                        .add(
+                            "error"
+                        );
+                }
+            }
+        }
+    }
+
+    // Columns
+
+    for(
+        let c=0;
+        c<9;
+        c++
+    ){
+
+        const seen = {};
+
+        for(
+            let r=0;
+            r<9;
+            r++
+        ){
+
+            const v =
+                puzzleBoard[r][c];
+
+            if(v===0)
+                continue;
+
+            if(!seen[v])
+                seen[v]=[];
+
+            seen[v].push(
+                [r,c]
+            );
+        }
+
+        for(
+            const v
+            in seen
+        ){
+
+            if(
+                seen[v].length
+                > 1
+            ){
+
+                for(
+                    const [rr,cc]
+                    of seen[v]
+                ){
+
+                    inputs[rr][cc]
+                        .classList
+                        .add(
+                            "error"
+                        );
+                }
+            }
+        }
+    }
+
+    // Boxes
+
+    for(
+        let br=0;
+        br<3;
+        br++
+    ){
+
+        for(
+            let bc=0;
+            bc<3;
+            bc++
+        ){
+
+            const seen = {};
+
+            for(
+                let r=br*3;
+                r<br*3+3;
+                r++
+            ){
+
+                for(
+                    let c=bc*3;
+                    c<bc*3+3;
+                    c++
+                ){
+
+                        const v =
+                            puzzleBoard[r][c];
+
+                        if(v===0)
+                            continue;
+
+                        if(!seen[v])
+                            seen[v]=[];
+
+                        seen[v].push(
+                            [r,c]
+                        );
+                }
+            }
+
+            for(
+                const v
+                in seen
+            ){
+
+                if(
+                    seen[v].length
+                    > 1
+                ){
+
+                    for(
+                        const [rr,cc]
+                        of seen[v]
+                    ){
+
+                        inputs[rr][cc]
+                            .classList
+                            .add(
+                                "error"
+                            );
+                    }
+                }
+            }
+        }
+    }
+}
+
+function checkSolved(){
+
+    if(
+        solutionBoard.length
+        ===0
+    ) return;
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            if(
+                puzzleBoard[r][c]
+                !==
+                solutionBoard[r][c]
+            ){
+
+                boardEl.classList.remove(
+                    "solved"
+                );
+
+                return;
+            }
+        }
+    }
+
+    boardEl.classList.add(
+        "solved"
+    );
+
+    statusEl.textContent =
+        "Solved!";
+}
+
+function restartPuzzle(){
+
+    puzzleBoard =
+        copyBoard(
+            originalPuzzle
+        );
+
+    boardEl.classList.remove(
+        "solved"
+    );
+
+    statusEl.textContent =
+        "";
+
+    renderBoard();
+}
+
+newPuzzleBtn
+.addEventListener(
+    "click",
+    generatePuzzle
+);
+
+resetBtn
+.addEventListener(
+    "click",
+    restartPuzzle
+);
+
+difficultyEl
+.addEventListener(
+    "change",
+    generatePuzzle
+);
+
+generatePuzzle();
+
+</script>
+
+</body>
+</html>
