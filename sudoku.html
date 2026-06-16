@@ -7,115 +7,122 @@
 
 <style>
 
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-    margin: 0;
-    padding: 20px;
-    text-align: center;
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    text-align:center;
 }
 
-h1 {
-    margin-bottom: 10px;
+h1{
+    margin-bottom:10px;
 }
 
-.description {
-    max-width: 900px;
-    margin: auto;
-    margin-bottom: 20px;
-    background: white;
-    padding: 15px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+.description{
+    max-width:900px;
+    margin:auto;
+    margin-bottom:20px;
+    background:white;
+    padding:15px;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
 
-#controls {
-    margin: 20px;
+#controls{
+    margin:20px;
 }
 
 button,
-select {
-    padding: 10px 16px;
-    font-size: 16px;
-    margin: 5px;
-    border-radius: 8px;
-    border: none;
+select{
+    padding:10px 16px;
+    font-size:16px;
+    border:none;
+    border-radius:8px;
+    margin:5px;
 }
 
-button {
-    background: #333;
-    color: white;
-    cursor: pointer;
+button{
+    background:#333;
+    color:white;
+    cursor:pointer;
 }
 
-button:hover {
-    background: #111;
+button:hover{
+    background:#111;
 }
 
-#status {
-    font-size: 22px;
-    min-height: 30px;
-    margin-top: 10px;
-    font-weight: bold;
+#status{
+    min-height:28px;
+    font-size:22px;
+    font-weight:bold;
+    margin-top:10px;
 }
 
-#board {
-    width: 540px;
-    margin: auto;
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    gap: 0;
-    background: #111;
-    padding: 4px;
-    border-radius: 10px;
-    transition: 0.3s;
+#board{
+    width:540px;
+    margin:auto;
+    display:grid;
+    grid-template-columns:repeat(9,1fr);
+    background:#111;
+    padding:4px;
+    border-radius:12px;
+    transition:0.3s;
 }
 
-#board.solved {
-    background: #d8f5d8;
+#board.solved{
+    background:#dff5df;
 }
 
-.cell {
-    width: 60px;
-    height: 60px;
-    border: 1px solid #bbb;
-    box-sizing: border-box;
+.cell{
+    width:60px;
+    height:60px;
 
-    font-size: 28px;
-    text-align: center;
-    font-weight: bold;
+    border:1px solid #bbb;
 
-    outline: none;
-    background: white;
+    box-sizing:border-box;
+
+    text-align:center;
+    font-size:28px;
+    font-weight:bold;
+
+    outline:none;
+
+    background:white;
 }
 
-.cell.given {
-    background: #e5e5e5;
+.cell.given{
+    background:#e6e6e6;
+    color:#111;
 }
 
-.cell.active {
-    background: #fff8c4;
+.cell.rowcol{
+    background:#fff7cc;
 }
 
-.cell.rowcol {
-    background: #eef5ff;
+.cell.box{
+    background:#eef6ff;
 }
 
-.cell.box {
-    background: #f3f8ff;
+.cell.active{
+    background:#dceeff;
 }
 
-.cell.error {
-    background: #ffebee !important;
-    color: #c62828 !important;
+.cell.same-number{
+    background:#c8f3ff !important;
 }
 
-.separator-right {
-    border-right: 5px solid #111 !important;
+.cell.error{
+    background:#ffebee !important;
+    color:#c62828 !important;
 }
 
-.separator-bottom {
-    border-bottom: 5px solid #111 !important;
+.separator-right{
+    border-right:5px solid #111 !important;
+}
+
+.separator-bottom{
+    border-bottom:5px solid #111 !important;
 }
 
 @media(max-width:650px){
@@ -141,11 +148,11 @@ button:hover {
 <div class="description">
 
 <p>
-Fill every row, column and 3×3 box with digits 1–9.
+Fill every row, column and 3×3 box with digits 1–9 exactly once.
 </p>
 
 <p>
-Each generated puzzle has a unique solution.
+Every puzzle is randomly generated and has a unique solution.
 </p>
 
 </div>
@@ -162,7 +169,7 @@ Each generated puzzle has a unique solution.
     New Puzzle
 </button>
 
-<button id="resetBtn">
+<button id="restartBtn">
     Restart Puzzle
 </button>
 
@@ -175,21 +182,29 @@ Each generated puzzle has a unique solution.
 <script>
 
 const boardEl =
-    document.getElementById("board");
+    document.getElementById(
+        "board"
+    );
 
 const statusEl =
-    document.getElementById("status");
+    document.getElementById(
+        "status"
+    );
 
 const difficultyEl =
-    document.getElementById("difficulty");
+    document.getElementById(
+        "difficulty"
+    );
 
 const newPuzzleBtn =
-    document.getElementById("newPuzzleBtn");
+    document.getElementById(
+        "newPuzzleBtn"
+    );
 
-const resetBtn =
-    document.getElementById("resetBtn");
-
-const SIZE = 9;
+const restartBtn =
+    document.getElementById(
+        "restartBtn"
+    );
 
 let solutionBoard = [];
 
@@ -208,13 +223,13 @@ function copyBoard(board){
     );
 }
 
-function shuffle(array){
+function shuffle(arr){
 
-    const arr =
-        array.slice();
+    const a =
+        arr.slice();
 
     for(
-        let i=arr.length-1;
+        let i=a.length-1;
         i>0;
         i--
     ){
@@ -224,14 +239,22 @@ function shuffle(array){
                 Math.random()*(i+1)
             );
 
-        [arr[i],arr[j]]
+        [a[i],a[j]]
             =
-        [arr[j],arr[i]];
+        [a[j],a[i]];
     }
 
-    return arr;
+    return a;
 }
 
+function boxIndex(r,c){
+
+    return (
+        Math.floor(r/3)*3
+        +
+        Math.floor(c/3)
+    );
+}
 function createSolvedBoard(){
 
     const board =
@@ -253,7 +276,7 @@ function createSolvedBoard(){
         ){
 
             board[r][c]
-                =
+            =
             (
                 r*3
                 +
@@ -265,59 +288,54 @@ function createSolvedBoard(){
         }
     }
 
-    const digitPerm =
+    const digits =
         shuffle(
             [1,2,3,4,5,6,7,8,9]
         );
 
-    const digitMap =
-        {};
+    const map = {};
 
     for(
         let i=1;
         i<=9;
         i++
     ){
-
-        digitMap[i]
-            =
-        digitPerm[i-1];
+        map[i] =
+            digits[i-1];
     }
-
-    const rowBands =
-        shuffle([0,1,2]);
 
     const rows = [];
 
     for(
         const band
-        of rowBands
+        of shuffle(
+            [0,1,2]
+        )
     ){
 
         rows.push(
             ...shuffle(
                 [0,1,2]
             ).map(
-                x=>band*3+x
+                x => band*3+x
             )
         );
     }
-
-    const colBands =
-        shuffle([0,1,2]);
 
     const cols = [];
 
     for(
         const band
-        of colBands
+        of shuffle(
+            [0,1,2]
+        )
     ){
 
         cols.push(
             ...shuffle(
                 [0,1,2]
             ).map(
-                x=>band*3+x
+                x => band*3+x
             )
         );
     }
@@ -341,8 +359,8 @@ function createSolvedBoard(){
         ){
 
             result[r][c]
-                =
-            digitMap[
+            =
+            map[
                 board[
                     rows[r]
                 ][
@@ -355,22 +373,13 @@ function createSolvedBoard(){
     return result;
 }
 
-function boxIndex(r,c){
-
-    return (
-        Math.floor(r/3)*3
-        +
-        Math.floor(c/3)
-    );
-}
-
 function popcount(x){
 
-    let count=0;
+    let count = 0;
 
     while(x){
 
-        x&=x-1;
+        x &= x-1;
 
         count++;
     }
@@ -380,7 +389,7 @@ function popcount(x){
 
 function digitsFromMask(mask){
 
-    const digits=[];
+    const result = [];
 
     for(
         let d=1;
@@ -394,13 +403,18 @@ function digitsFromMask(mask){
                 1<<(d-1)
             )
         ){
-            digits.push(d);
+
+            result.push(d);
         }
     }
 
-    return digits;
+    return result;
 }
-function countSolutions(board, limit=2){
+
+function countSolutions(
+    board,
+    limit=2
+){
 
     const rowMask =
         Array(9).fill(0);
@@ -446,7 +460,9 @@ function countSolutions(board, limit=2){
 
         if(
             solutions >= limit
-        ) return;
+        ){
+            return;
+        }
 
         let bestR = -1;
         let bestC = -1;
@@ -482,25 +498,35 @@ function countSolutions(board, limit=2){
                         ]
                     );
 
-                const cnt =
+                const count =
                     popcount(mask);
 
-                if(cnt===0)
+                if(
+                    count===0
+                ){
                     return;
+                }
 
                 if(
-                    cnt < bestCount
+                    count
+                    <
+                    bestCount
                 ){
 
-                    bestCount = cnt;
+                    bestCount =
+                        count;
+
                     bestR = r;
                     bestC = c;
-                    bestMask = mask;
+                    bestMask =
+                        mask;
                 }
             }
         }
 
-        if(bestR===-1){
+        if(
+            bestR===-1
+        ){
 
             solutions++;
             return;
@@ -512,18 +538,18 @@ function countSolutions(board, limit=2){
             );
 
         for(
-            const d
+            const digit
             of digits
         ){
 
             const bit =
-                1<<(d-1);
+                1<<(digit-1);
 
             board[
                 bestR
             ][
                 bestC
-            ] = d;
+            ] = digit;
 
             rowMask[
                 bestR
@@ -572,16 +598,22 @@ function countSolutions(board, limit=2){
 
 function clueTarget(){
 
-    const d =
+    const diff =
         difficultyEl.value;
 
-    if(d==="easy")
-        return 42;
+    if(
+        diff==="easy"
+    ){
+        return 44;
+    }
 
-    if(d==="hard")
+    if(
+        diff==="hard"
+    ){
         return 28;
+    }
 
-    return 34;
+    return 36;
 }
 
 function generatePuzzle(){
@@ -593,14 +625,17 @@ function generatePuzzle(){
         createSolvedBoard();
 
     const puzzle =
-        copyBoard(solution);
+        copyBoard(
+            solution
+        );
 
     const cells =
         shuffle(
             [...Array(81).keys()]
         );
 
-    let cluesLeft = 81;
+    let cluesLeft =
+        81;
 
     const target =
         clueTarget();
@@ -614,7 +649,9 @@ function generatePuzzle(){
             cluesLeft
             <=
             target
-        ) break;
+        ){
+            break;
+        }
 
         const r =
             Math.floor(
@@ -637,33 +674,35 @@ function generatePuzzle(){
                 2
             );
 
-        if(count===1){
+        if(
+            count===1
+        ){
 
             cluesLeft--;
 
         }else{
 
             puzzle[r][c]
-                =
+            =
             backup;
         }
     }
 
     solutionBoard =
-        copyBoard(solution);
+        copyBoard(
+            solution
+        );
 
     puzzleBoard =
-        copyBoard(puzzle);
+        copyBoard(
+            puzzle
+        );
 
     originalPuzzle =
-        copyBoard(puzzle);
-
-    renderBoard();
-
-    statusEl.textContent =
-        "";
+        copyBoard(
+            puzzle
+        );
 }
-
 function renderBoard(){
 
     boardEl.innerHTML = "";
@@ -703,7 +742,6 @@ function renderBoard(){
                 ||
                 c===5
             ){
-
                 cell.classList.add(
                     "separator-right"
                 );
@@ -714,7 +752,6 @@ function renderBoard(){
                 ||
                 r===5
             ){
-
                 cell.classList.add(
                     "separator-bottom"
                 );
@@ -741,7 +778,7 @@ function renderBoard(){
                     "input",
                     ()=>{
 
-                        let v =
+                        let value =
                             cell.value
                             .replace(
                                 /[^1-9]/g,
@@ -749,18 +786,20 @@ function renderBoard(){
                             );
 
                         cell.value =
-                            v;
+                            value;
 
                         puzzleBoard[r][c]
-                            =
-                        v
+                        =
+                        value
                         ?
-                        parseInt(v)
+                        parseInt(
+                            value
+                        )
                         :
                         0;
 
+                        updateHighlights();
                         markErrors();
-
                         checkSolved();
                     }
                 );
@@ -771,11 +810,69 @@ function renderBoard(){
 
                         activeCell =
                         {
-                            r,
-                            c
+                            r:r,
+                            c:c
                         };
 
                         updateHighlights();
+                    }
+                );
+
+                cell.addEventListener(
+                    "keydown",
+                    e=>{
+
+                        if(
+                            e.key==="ArrowUp"
+                            &&
+                            r>0
+                        ){
+
+                            inputs[
+                                r-1
+                            ][c]
+                            .focus();
+                        }
+
+                        if(
+                            e.key==="ArrowDown"
+                            &&
+                            r<8
+                        ){
+
+                            inputs[
+                                r+1
+                            ][c]
+                            .focus();
+                        }
+
+                        if(
+                            e.key==="ArrowLeft"
+                            &&
+                            c>0
+                        ){
+
+                            inputs[
+                                r
+                            ][
+                                c-1
+                            ]
+                            .focus();
+                        }
+
+                        if(
+                            e.key==="ArrowRight"
+                            &&
+                            c<8
+                        ){
+
+                            inputs[
+                                r
+                            ][
+                                c+1
+                            ]
+                            .focus();
+                        }
                     }
                 );
             }
@@ -791,11 +888,51 @@ function renderBoard(){
     }
 
     updateHighlights();
-
     markErrors();
 }
 
+function clearHighlights(){
+
+    for(
+        let r=0;
+        r<9;
+        r++
+    ){
+
+        for(
+            let c=0;
+            c<9;
+            c++
+        ){
+
+            inputs[r][c]
+                .classList
+                .remove(
+                    "active",
+                    "rowcol",
+                    "box",
+                    "same-number"
+                );
+        }
+    }
+}
+
 function updateHighlights(){
+
+    clearHighlights();
+
+    if(
+        !activeCell
+    ){
+        return;
+    }
+
+    const value =
+        puzzleBoard[
+            activeCell.r
+        ][
+            activeCell.c
+        ];
 
     for(
         let r=0;
@@ -811,16 +948,6 @@ function updateHighlights(){
 
             const cell =
                 inputs[r][c];
-
-            cell.classList.remove(
-                "active",
-                "rowcol",
-                "box"
-            );
-
-            if(
-                !activeCell
-            ) continue;
 
             const sameRow =
                 r===activeCell.r;
@@ -860,19 +987,30 @@ function updateHighlights(){
             }
 
             if(
-                sameRow
-                ||
-                sameCol
-                ||
-                sameBox
+                r===activeCell.r
+                &&
+                c===activeCell.c
             ){
                 cell.classList.add(
                     "active"
                 );
             }
+
+            if(
+                value!==0
+                &&
+                puzzleBoard[r][c]
+                === value
+            ){
+
+                cell.classList.add(
+                    "same-number"
+                );
+            }
         }
     }
 }
+
 function markErrors(){
 
     for(
@@ -895,7 +1033,7 @@ function markErrors(){
         }
     }
 
-    // Rows
+    // rows
 
     for(
         let r=0;
@@ -911,18 +1049,21 @@ function markErrors(){
             c++
         ){
 
-            const v =
+            const value =
                 puzzleBoard[r][c];
 
-            if(v===0)
-                continue;
+            if(
+                value===0
+            ) continue;
 
-            if(!seen[v])
-                seen[v]=[];
+            if(
+                !seen[value]
+            ){
+                seen[value]=[];
+            }
 
-            seen[v].push(
-                [r,c]
-            );
+            seen[value]
+            .push([r,c]);
         }
 
         for(
@@ -931,26 +1072,30 @@ function markErrors(){
         ){
 
             if(
-                seen[v].length
-                > 1
+                seen[v]
+                .length>1
             ){
 
                 for(
-                    const [rr,cc]
+                    const pos
                     of seen[v]
                 ){
 
-                    inputs[rr][cc]
-                        .classList
-                        .add(
-                            "error"
-                        );
+                    inputs[
+                        pos[0]
+                    ][
+                        pos[1]
+                    ]
+                    .classList
+                    .add(
+                        "error"
+                    );
                 }
             }
         }
     }
 
-    // Columns
+    // columns
 
     for(
         let c=0;
@@ -966,18 +1111,21 @@ function markErrors(){
             r++
         ){
 
-            const v =
+            const value =
                 puzzleBoard[r][c];
 
-            if(v===0)
-                continue;
+            if(
+                value===0
+            ) continue;
 
-            if(!seen[v])
-                seen[v]=[];
+            if(
+                !seen[value]
+            ){
+                seen[value]=[];
+            }
 
-            seen[v].push(
-                [r,c]
-            );
+            seen[value]
+            .push([r,c]);
         }
 
         for(
@@ -986,26 +1134,29 @@ function markErrors(){
         ){
 
             if(
-                seen[v].length
-                > 1
+                seen[v]
+                .length>1
             ){
 
                 for(
-                    const [rr,cc]
+                    const pos
                     of seen[v]
                 ){
 
-                    inputs[rr][cc]
-                        .classList
-                        .add(
-                            "error"
-                        );
+                    inputs[
+                        pos[0]
+                    ][
+                        pos[1]
+                    ]
+                    .classList
+                    .add(
+                        "error"
+                    );
                 }
             }
         }
     }
-
-    // Boxes
+        // boxes
 
     for(
         let br=0;
@@ -1033,18 +1184,21 @@ function markErrors(){
                     c++
                 ){
 
-                        const v =
-                            puzzleBoard[r][c];
+                    const value =
+                        puzzleBoard[r][c];
 
-                        if(v===0)
-                            continue;
+                    if(
+                        value===0
+                    ) continue;
 
-                        if(!seen[v])
-                            seen[v]=[];
+                    if(
+                        !seen[value]
+                    ){
+                        seen[value]=[];
+                    }
 
-                        seen[v].push(
-                            [r,c]
-                        );
+                    seen[value]
+                    .push([r,c]);
                 }
             }
 
@@ -1054,20 +1208,24 @@ function markErrors(){
             ){
 
                 if(
-                    seen[v].length
-                    > 1
+                    seen[v]
+                    .length>1
                 ){
 
                     for(
-                        const [rr,cc]
+                        const pos
                         of seen[v]
                     ){
 
-                        inputs[rr][cc]
-                            .classList
-                            .add(
-                                "error"
-                            );
+                        inputs[
+                            pos[0]
+                        ][
+                            pos[1]
+                        ]
+                        .classList
+                        .add(
+                            "error"
+                        );
                     }
                 }
             }
@@ -1076,11 +1234,6 @@ function markErrors(){
 }
 
 function checkSolved(){
-
-    if(
-        solutionBoard.length
-        ===0
-    ) return;
 
     for(
         let r=0;
@@ -1103,6 +1256,9 @@ function checkSolved(){
                 boardEl.classList.remove(
                     "solved"
                 );
+
+                statusEl.textContent =
+                    "";
 
                 return;
             }
@@ -1134,25 +1290,36 @@ function restartPuzzle(){
     renderBoard();
 }
 
-newPuzzleBtn
-.addEventListener(
+function buildNewPuzzle(){
+
+    generatePuzzle();
+
+    renderBoard();
+
+    boardEl.classList.remove(
+        "solved"
+    );
+
+    statusEl.textContent =
+        "";
+}
+
+newPuzzleBtn.addEventListener(
     "click",
-    generatePuzzle
+    buildNewPuzzle
 );
 
-resetBtn
-.addEventListener(
+restartBtn.addEventListener(
     "click",
     restartPuzzle
 );
 
-difficultyEl
-.addEventListener(
+difficultyEl.addEventListener(
     "change",
-    generatePuzzle
+    buildNewPuzzle
 );
 
-generatePuzzle();
+buildNewPuzzle();
 
 </script>
 
