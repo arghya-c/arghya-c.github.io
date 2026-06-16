@@ -94,6 +94,11 @@ button:hover{
 .cell.given{
     background:#e6e6e6;
     color:#111;
+    cursor:pointer;
+}
+
+.cell.given.active{
+    background:#dceeff;
 }
 
 .cell.rowcol{
@@ -757,22 +762,32 @@ function renderBoard(){
                 );
             }
 
-            if(
-                puzzleBoard[r][c]
-                !==0
-            ){
+                if(puzzleBoard[r][c] !==0){
 
-                cell.value =
-                    puzzleBoard[r][c];
+                  cell.value =
+                       puzzleBoard[r][c];
 
-                cell.readOnly =
-                    true;
+                 cell.readOnly =
+                      true;
 
-                cell.classList.add(
-                    "given"
-                );
+                 cell.classList.add(
+                      "given"
+                 );
 
-            }else{
+                  cell.addEventListener(
+                     "click",
+                     ()=>{
+
+                            activeCell = {
+                             r:r,
+                              c:c
+                           };
+
+                           updateHighlights();
+                        }
+                   );
+
+                }else{
 
                 cell.addEventListener(
                     "input",
